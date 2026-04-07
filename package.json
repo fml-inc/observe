@@ -27,6 +27,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "prepack": "node scripts/generate-plugin-manifest.js",
     "pack:local": "pnpm build && pnpm pack",
     "postinstall": "node ./dist/postinstall.js && claude plugin update 2>/dev/null || true",
     "type-check": "tsc --noEmit",
