@@ -2,6 +2,7 @@
   "name": "@fml-inc/fml",
   "version": "0.0.0-dev",
   "description": "FML agent tools for Claude Code",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "engines": {
