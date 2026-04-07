@@ -1,0 +1,62 @@
+{
+  "name": "@fml-inc/fml",
+  "version": "0.0.0-dev",
+  "description": "FML agent tools for Claude Code",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "fml": "./bin/fml"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fml-inc/observe.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    ".claude-plugin/"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "pack:local": "pnpm build && pnpm pack",
+    "postinstall": "node ./dist/postinstall.js && claude plugin update 2>/dev/null || true",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fml-inc/panopticon": "^0.1.4",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
+    "commander": "^13.1.0",
+    "debug": "^4.4.0",
+    "convex": "^1.21.0",
+    "open": "^10.1.0",
+    "ora": "^8.2.0",
+    "picocolors": "^1.1.1",
+    "protobufjs": "^7.0.0",
+    "smol-toml": "^1.3.0",
+    "zod": "^3.23.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@sentry/core": "^10.43.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "vitest": "^4.1.0",
+    "typescript": "^5"
+  }
+}
