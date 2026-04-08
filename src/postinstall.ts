@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function bootstrapPanopticon(): void {
+export function bootstrapPanopticon(): void {
   const npmEnv = { ...process.env };
   delete npmEnv.npm_config_registry; // Let scoped registry from .npmrc take effect
 
