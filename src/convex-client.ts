@@ -102,13 +102,19 @@ export function createApiClient(token: string) {
       try {
         if (isServiceToken) {
           // Service token path: POST to HTTP endpoint (Convex can't validate non-JWT tokens)
+          // Thread user identity from sandbox agent if available
+          const userExternalId = process.env.FML_USER_EXTERNAL_ID;
           const res = await fetch(`${getSiteUrl()}/api/tools/execute`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ toolName, args }),
+            body: JSON.stringify({
+              toolName,
+              args,
+              ...(userExternalId && { userExternalId }),
+            }),
           });
           const text = await res.text();
           let data: ToolResult;
