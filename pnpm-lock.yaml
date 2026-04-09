@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@fml-inc/panopticon':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: ^0.1.9
+        version: 0.1.9
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
@@ -387,8 +387,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fml-inc/panopticon@0.1.8':
-    resolution: {integrity: sha512-a2hKBgrFRe9JoE+Brjt8RQzLf+0eS0Ovsyc59g4+2iXoa2XnkMUFQKNdTxej9PqOiMWzQyhW/uy6q5uoj4DaNQ==}
+  '@fml-inc/panopticon@0.1.9':
+    resolution: {integrity: sha512-PdfNl/oUS5ZrtovV2YP9cBF4A1dU4eGrOPePUZy5K0BmGP46U3iMzsZQq/8hxLIuEzvP+kj7G5jJ7bZJGCte3g==}
     engines: {node: '>=22.0.0'}
     hasBin: true
 
@@ -1963,7 +1963,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@fml-inc/panopticon@0.1.8':
+  '@fml-inc/panopticon@0.1.9':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
       better-sqlite3: 11.10.0

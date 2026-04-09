@@ -35,7 +35,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fml-inc/panopticon": "^0.1.8",
+    "@fml-inc/panopticon": "^0.1.9",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^11.0.0",
     "commander": "^13.1.0",
