@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@fml-inc/panopticon':
-        specifier: ^0.1.8
-        version: 0.1.8
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
@@ -45,6 +42,9 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
+      '@fml-inc/panopticon':
+        specifier: ^0.2.2
+        version: 0.2.2
       '@sentry/core':
         specifier: ^10.43.0
         version: 10.47.0
@@ -387,9 +387,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fml-inc/panopticon@0.1.8':
-    resolution: {integrity: sha512-a2hKBgrFRe9JoE+Brjt8RQzLf+0eS0Ovsyc59g4+2iXoa2XnkMUFQKNdTxej9PqOiMWzQyhW/uy6q5uoj4DaNQ==}
-    engines: {node: '>=22.0.0'}
+  '@fml-inc/panopticon@0.2.2':
+    resolution: {integrity: sha512-cSweSU1mpUeFG31GqGg4AY8/jZJHRlhSjX3PSI+8dk0KZNUpiIAqfy5+Aw9hO1yOEy7KIWpqnhYf9ATm1ipYPw==}
+    engines: {node: '>=24.0.0'}
     hasBin: true
 
   '@hono/node-server@1.19.13':
@@ -1963,10 +1963,9 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@fml-inc/panopticon@0.1.8':
+  '@fml-inc/panopticon@0.2.2':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
-      better-sqlite3: 11.10.0
       commander: 14.0.3
       protobufjs: 7.5.4
       smol-toml: 1.6.1

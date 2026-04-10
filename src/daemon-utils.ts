@@ -20,23 +20,14 @@ export function isDaemonRunning(pidFile: string): {
   }
 }
 
-/** Resolve the panopticon CLI binary from PATH or the bundled dependency. */
+/** Resolve the panopticon CLI binary from PATH (globally installed). */
 export function resolvePanopticonBin(): string | null {
-  // Try to find panopticon in PATH
   try {
     const result = execFileSync("which", ["panopticon"], {
       encoding: "utf-8",
       timeout: 5_000,
     }).trim();
     if (result) return result;
-  } catch {}
-
-  // Fall back to the bundled dependency
-  try {
-    const resolved = import.meta.resolve("@fml-inc/panopticon/setup");
-    const pkgDir = path.resolve(new URL(resolved).pathname, "../..");
-    const bin = path.join(pkgDir, "bin", "panopticon");
-    if (fs.existsSync(bin)) return bin;
   } catch {}
 
   return null;
