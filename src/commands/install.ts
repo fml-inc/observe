@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -46,32 +47,88 @@ export async function handleInstall(): Promise<void> {
   const pluginRoot = getPluginRoot();
   console.log("Installing fml...\n");
 
-  // 1. Run panopticon install (DB, pricing, hooks, marketplace, skills, server)
-  console.log("[1/4] Running panopticon install...");
-  const result = panopticonExec("install", { timeout: 60_000 });
-  if (result.ok) {
-    // Indent panopticon output for readability
-    for (const line of result.stdout.trim().split("\n")) {
-      console.log(`      ${line}`);
+  // 1. Ensure panopticon is installed globally and up to date
+  console.log("[1/5] Setting up panopticon...");
+  const { resolvePanopticonBin } = await import("../daemon-utils.js");
+  let freshInstall = false;
+  const bin = resolvePanopticonBin();
+  let needsInstall = !bin;
+  if (bin) {
+    // Check version — upgrade if below the minimum required by this build
+    const MIN_PANOPTICON = "0.2.1";
+    const vResult = panopticonExec("--version", { timeout: 5_000 });
+    const installed = vResult.ok ? vResult.stdout.trim().split("+")[0] : "0.0.0";
+    if (installed < MIN_PANOPTICON) {
+      console.log(`      Found panopticon ${installed}, need >=${MIN_PANOPTICON}`);
+      needsInstall = true;
     }
-  } else {
-    console.error("      panopticon install failed:");
-    for (const line of result.stdout.trim().split("\n")) {
-      console.error(`      ${line}`);
+  }
+  if (needsInstall) {
+    console.log(
+      bin
+        ? "      Upgrading @fml-inc/panopticon..."
+        : "      Installing @fml-inc/panopticon globally...",
+    );
+    try {
+      execFileSync("npm", ["install", "-g", "@fml-inc/panopticon@latest"], {
+        encoding: "utf-8",
+        timeout: 120_000,
+        stdio: "pipe",
+      });
+      freshInstall = true;
+      console.log("      Installed @fml-inc/panopticon");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`      Failed to install panopticon: ${msg}`);
+      console.error("      Install manually: npm install -g @fml-inc/panopticon@latest");
+    }
+  }
+  // npm postinstall already ran panopticon install for fresh installs;
+  // only re-run for existing installs to pick up config changes.
+  if (!freshInstall) {
+    const result = panopticonExec("install", { timeout: 60_000 });
+    if (result.ok) {
+      for (const line of result.stdout.trim().split("\n")) {
+        console.log(`      ${line}`);
+      }
+    } else {
+      console.error("      panopticon install failed:");
+      for (const line of result.stdout.trim().split("\n")) {
+        console.error(`      ${line}`);
+      }
     }
   }
   console.log();
 
   // 2. Ensure fml-specific directories exist
-  console.log("[2/4] Creating fml directories...");
+  console.log("[2/5] Creating fml directories...");
   for (const dir of [FML_DATA_DIR, FML_LOG_DIR]) {
     fs.mkdirSync(dir, { recursive: true });
   }
   console.log(`      ${FML_DATA_DIR}`);
   console.log(`      ${FML_LOG_DIR}\n`);
 
-  // 3. Register fml plugin in local marketplace + Claude Code settings
-  console.log("[3/4] Setting up fml plugin...");
+  // 3. Ensure plugin manifest has the current version
+  console.log("[3/5] Writing plugin manifest...");
+  const pkgJson = readJsonFile(path.join(pluginRoot, "package.json"));
+  const version = (pkgJson?.version as string) ?? "0.0.0-dev";
+  const pluginManifestDir = path.join(pluginRoot, ".claude-plugin");
+  fs.mkdirSync(pluginManifestDir, { recursive: true });
+  writeJsonFile(path.join(pluginManifestDir, "plugin.json"), {
+    name: "fml",
+    version,
+    description: "FML agent tools for Claude Code",
+    mcpServers: {
+      fml: {
+        command: "node",
+        args: ["${CLAUDE_PLUGIN_ROOT}/bin/mcp-server"],
+      },
+    },
+  });
+  console.log(`      Version: ${version}\n`);
+
+  // 4. Register fml plugin in local marketplace + Claude Code settings
+  console.log("[4/5] Setting up fml plugin...");
   fs.mkdirSync(path.join(MARKETPLACE_DIR, ".claude-plugin"), {
     recursive: true,
   });
@@ -120,10 +177,29 @@ export async function handleInstall(): Promise<void> {
   settings.enabledPlugins = settings.enabledPlugins ?? {};
   settings.enabledPlugins["fml@local-plugins"] = true;
   writeJsonFile(CLAUDE_SETTINGS_PATH, settings);
-  console.log(`      Claude settings: ${CLAUDE_SETTINGS_PATH}\n`);
+  console.log(`      Claude settings: ${CLAUDE_SETTINGS_PATH}`);
 
-  // 4. Auto-configure sync target (best-effort)
-  console.log("[4/4] Configuring sync target...");
+  // Register plugin with Claude Code (install if new, update if existing)
+  try {
+    try {
+      execFileSync("claude", ["plugin", "install", "fml@local-plugins"], {
+        stdio: "pipe",
+        timeout: 15_000,
+      });
+    } catch {
+      execFileSync("claude", ["plugin", "update", "fml@local-plugins"], {
+        stdio: "pipe",
+        timeout: 15_000,
+      });
+    }
+    console.log("      Plugin registered via Claude Code CLI");
+  } catch {
+    console.log("      warn: claude CLI not found, run 'claude plugin install fml@local-plugins' manually");
+  }
+  console.log();
+
+  // 5. Auto-configure sync target (best-effort)
+  console.log("[5/5] Configuring sync target...");
   const prodSyncUrl = DEFAULT_PROD_URL.replace(".cloud", ".site");
   const existingTargets = listTargets();
   const existingProd = existingTargets.find((t) => t.url === prodSyncUrl);

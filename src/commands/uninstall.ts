@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +12,13 @@ const MARKETPLACE_DIR = path.join(
   ".local",
   "share",
   "claude-plugins",
+);
+const PLUGIN_CACHE_DIR = path.join(
+  CLAUDE_DIR,
+  "plugins",
+  "cache",
+  "local-plugins",
+  "fml",
 );
 
 function readJsonFile(filePath: string): Record<string, unknown> | null {
@@ -33,11 +41,65 @@ export function handleUninstall(opts: {
 
   console.log("Uninstalling fml...\n");
 
-  // 1. Remove fml plugin from Claude Code settings
+  // 1. Tell Claude Code to uninstall the plugin (kills MCP server, evicts cache)
   if (targetSpecific) {
-    console.log("[1/4] Skipping plugin settings (target-specific uninstall)");
+    console.log("[1/5] Skipping plugin uninstall (target-specific uninstall)");
   } else {
-    console.log("[1/4] Removing plugin from Claude Code settings...");
+    console.log("[1/5] Uninstalling MCP plugin...");
+    // Uninstall from user scope via CLI
+    try {
+      execFileSync(
+        "claude",
+        ["plugin", "uninstall", "fml@local-plugins", "--scope", "user"],
+        { stdio: "pipe", timeout: 10_000 },
+      );
+      console.log("      Uninstalled (user scope)");
+    } catch {
+      // Not installed at this scope, or claude CLI not found
+    }
+
+    // Clean all scopes from installed_plugins.json directly — the CLI
+    // can only remove project-scoped entries from within that project dir,
+    // so we handle it ourselves.
+    // Clean all scopes from installed_plugins.json directly — the CLI
+    // can only remove project-scoped entries from within that project dir,
+    // so we handle it ourselves.
+    const installedPluginsPath = path.join(
+      CLAUDE_DIR,
+      "plugins",
+      "installed_plugins.json",
+    );
+    const installedPlugins = readJsonFile(installedPluginsPath) as {
+      version?: number;
+      plugins?: Record<string, unknown[]>;
+    } | null;
+    const plugins = installedPlugins?.plugins;
+    const fmlEntries = plugins?.["fml@local-plugins"];
+    if (plugins && fmlEntries) {
+      // Clean project-level settings that reference fml
+      for (const entry of fmlEntries) {
+        const e = entry as { scope?: string; projectPath?: string };
+        if (e.scope === "project" && e.projectPath) {
+          const projSettings = path.join(e.projectPath, ".claude", "settings.json");
+          const proj = readJsonFile(projSettings) as Record<string, Record<string, unknown>> | null;
+          if (proj?.enabledPlugins?.["fml@local-plugins"] != null) {
+            delete proj.enabledPlugins["fml@local-plugins"];
+            writeJsonFile(projSettings, proj);
+            console.log(`      Cleaned ${projSettings}`);
+          }
+        }
+      }
+      delete plugins["fml@local-plugins"];
+      writeJsonFile(installedPluginsPath, installedPlugins as Record<string, unknown>);
+      console.log("      Cleaned installed_plugins.json");
+    }
+  }
+
+  // 2. Remove fml plugin from Claude Code settings
+  if (targetSpecific) {
+    console.log("[2/5] Skipping plugin settings (target-specific uninstall)");
+  } else {
+    console.log("[2/5] Removing plugin from Claude Code settings...");
     const settings = readJsonFile(CLAUDE_SETTINGS_PATH) as Record<
       string,
       Record<string, unknown>
@@ -56,11 +118,11 @@ export function handleUninstall(opts: {
     }
   }
 
-  // 2. Remove marketplace symlink and manifest entry
+  // 3. Remove marketplace symlink and manifest entry
   if (targetSpecific) {
-    console.log("[2/4] Skipping marketplace (target-specific uninstall)");
+    console.log("[3/5] Skipping marketplace (target-specific uninstall)");
   } else {
-    console.log("[2/4] Removing marketplace registration...");
+    console.log("[3/5] Removing marketplace registration...");
     const marketplaceLink = path.join(MARKETPLACE_DIR, "fml");
     try {
       fs.rmSync(marketplaceLink, { recursive: true, force: true });
@@ -84,8 +146,8 @@ export function handleUninstall(opts: {
     }
   }
 
-  // 3. Run panopticon uninstall
-  console.log("[3/4] Running panopticon uninstall...");
+  // 4. Run panopticon uninstall
+  console.log("[4/5] Running panopticon uninstall...");
   const panoArgs = ["uninstall"];
   if (opts.target) panoArgs.push("--target", opts.target);
   if (opts.purge) panoArgs.push("--purge");
@@ -101,11 +163,21 @@ export function handleUninstall(opts: {
     }
   }
 
-  // 4. Remove fml data and logs (only with --purge, never for target-specific)
+  // 5. Remove fml data, logs, and plugin cache
   if (targetSpecific) {
-    console.log("[4/4] Skipping data removal (target-specific uninstall)");
-  } else if (opts.purge) {
-    console.log("[4/4] Removing fml data and logs...");
+    console.log("[5/5] Skipping data removal (target-specific uninstall)");
+  } else {
+    console.log("[5/5] Removing plugin cache...");
+    try {
+      fs.rmSync(PLUGIN_CACHE_DIR, { recursive: true, force: true });
+      console.log(`      Removed ${PLUGIN_CACHE_DIR}`);
+    } catch {
+      console.log("      No plugin cache found");
+    }
+  }
+
+  if (opts.purge) {
+    console.log("Removing fml data and logs...");
     for (const dir of [FML_DATA_DIR, FML_LOG_DIR]) {
       try {
         fs.rmSync(dir, { recursive: true, force: true });
@@ -115,7 +187,7 @@ export function handleUninstall(opts: {
       }
     }
   } else {
-    console.log("[4/4] Keeping fml data (use --purge to remove)");
+    console.log("Keeping fml data (use --purge to remove)");
   }
 
   console.log("\nDone! FML has been uninstalled.");

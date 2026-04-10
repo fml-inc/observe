@@ -1,8 +1,11 @@
 #!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+
+const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 
 const manifest = {
   name: "fml",
+  version: pkg.version,
   description: "FML agent tools for Claude Code",
   mcpServers: {
     fml: {

@@ -25,17 +25,16 @@
     ".claude-plugin/"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "node scripts/generate-plugin-manifest.js && tsup",
     "dev": "tsup --watch",
     "prepack": "node scripts/generate-plugin-manifest.js",
     "pack:local": "pnpm build && pnpm pack",
-    "postinstall": "node ./dist/postinstall.js && claude plugin update 2>/dev/null || true",
+    "postinstall": "node ./dist/postinstall.js && (claude plugin install fml@local-plugins 2>/dev/null || claude plugin update fml@local-plugins || echo 'warn: claude CLI not found, run claude plugin install fml@local-plugins manually')",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fml-inc/panopticon": "^0.1.9",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^11.0.0",
     "commander": "^13.1.0",
@@ -55,6 +54,7 @@
     ]
   },
   "devDependencies": {
+    "@fml-inc/panopticon": "^0.2.1",
     "@sentry/core": "^10.43.0",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",
