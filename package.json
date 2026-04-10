@@ -54,7 +54,7 @@
     ]
   },
   "devDependencies": {
-    "@fml-inc/panopticon": "^0.2.1",
+    "@fml-inc/panopticon": "^0.2.2",
     "@sentry/core": "^10.43.0",
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0",

@@ -55,7 +55,7 @@ export async function handleInstall(): Promise<void> {
   let needsInstall = !bin;
   if (bin) {
     // Check version — upgrade if below the minimum required by this build
-    const MIN_PANOPTICON = "0.2.1";
+    const MIN_PANOPTICON = "0.2.2";
     const vResult = panopticonExec("--version", { timeout: 5_000 });
     const installed = vResult.ok ? vResult.stdout.trim().split("+")[0] : "0.0.0";
     if (installed < MIN_PANOPTICON) {
