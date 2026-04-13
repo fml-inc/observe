@@ -144,7 +144,8 @@ program
 program
   .command("login")
   .description("Sign in to your FML account")
-  .action(() => handleLogin());
+  .option("--device", "Use device authorization flow (no browser needed)")
+  .action((opts: { device?: boolean }) => handleLogin(opts));
 
 program
   .command("logout")

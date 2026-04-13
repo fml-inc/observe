@@ -16,6 +16,8 @@ interface StoredAuth {
   orgSlug?: string;
   /** WorkOS client ID used to obtain these tokens (needed for refresh) */
   workosClientId?: string;
+  /** Token type: "oauth" (default) for WorkOS JWT, "service" for device flow tokens */
+  tokenType?: "oauth" | "service";
 }
 
 function ensureDir(): void {
@@ -164,7 +166,7 @@ export async function getValidToken(): Promise<string | null> {
   // Static service token (legacy) or plain env override
   if (envToken) return envToken;
 
-  // OAuth path (interactive user)
+  // Stored token path (OAuth or device flow)
   const stored = readTokens();
   if (!stored) {
     console.error("[fml] Auth: no stored tokens");
@@ -176,7 +178,28 @@ export async function getValidToken(): Promise<string | null> {
     return stored.accessToken;
   }
 
-  // Deduplicate concurrent refresh attempts
+  // Device flow tokens: refresh via /api/tokens/refresh (same as sandbox tokens)
+  if (stored.tokenType === "service") {
+    if (serviceRefreshPromise) return serviceRefreshPromise;
+    serviceRefreshPromise = (async () => {
+      const newAccessToken = await refreshServiceToken(stored.refreshToken);
+      if (newAccessToken && serviceTokenCache) {
+        writeTokens({
+          ...stored,
+          accessToken: newAccessToken,
+          expiresAt: serviceTokenCache.expiresAt,
+        });
+      }
+      return newAccessToken;
+    })();
+    try {
+      return await serviceRefreshPromise;
+    } finally {
+      serviceRefreshPromise = null;
+    }
+  }
+
+  // OAuth tokens: refresh via WorkOS
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = refreshToken(stored);
