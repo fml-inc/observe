@@ -44,6 +44,12 @@ async function linkGitHubIdentity(): Promise<void> {
       return;
     }
 
+    // Service tokens (device flow) can't call JWT-authenticated Convex mutations.
+    // Identity is already attributed server-side via actAsExternalId on the token.
+    if (fmlToken.startsWith("fml_st_")) {
+      return;
+    }
+
     if (!CONVEX_URL) {
       console.warn(
         "[fml] No Convex URL configured — skipping identity link (run fml install first)",
