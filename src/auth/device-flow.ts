@@ -1,11 +1,13 @@
 /**
- * Device Authorization Flow
+ * Device Authorization Flow — Double Handshake
  *
- * RFC 8628-like flow for headless environments (sandboxes, containers, SSH).
- * The user gets a URL + code, enters it in any browser, and the CLI polls
- * until the code is confirmed.
+ * 1. CLI gets a unique URL + deviceCode from backend
+ * 2. User pastes URL in browser → page shows confirmation code
+ * 3. User types confirmation code back into CLI
+ * 4. CLI polls with deviceCode + confirmationCode → gets tokens
  */
 
+import { createInterface } from "node:readline";
 import { getSiteUrl } from "../config.js";
 import { writeTokens } from "./token-store.js";
 
@@ -13,16 +15,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function prompt(question: string): Promise<string> {
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stderr, // Use stderr so stdout stays clean for MCP
+  });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
 interface DeviceCodeResponse {
   deviceCode: string;
-  userCode: string;
   verificationUri: string;
   expiresAt: number;
   interval: number;
 }
 
 interface PollResponse {
-  status: "pending" | "authorized" | "expired" | "rate_limited";
+  status:
+    | "pending"
+    | "authorized"
+    | "expired"
+    | "rate_limited"
+    | "invalid_code";
   refreshToken?: string;
   accessToken?: string;
   expiresAt?: number;
@@ -32,8 +51,7 @@ interface PollResponse {
 }
 
 /**
- * Run the device authorization flow.
- * Returns user info on success, throws on failure/timeout.
+ * Run the double-handshake device authorization flow.
  */
 export async function deviceLogin(): Promise<{
   email: string;
@@ -41,7 +59,7 @@ export async function deviceLogin(): Promise<{
 }> {
   const siteUrl = getSiteUrl();
 
-  // 1. Request device code
+  // 1. Request device code + session URL
   const codeRes = await fetch(`${siteUrl}/api/auth/device/code`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -54,34 +72,55 @@ export async function deviceLogin(): Promise<{
 
   const codeData = (await codeRes.json()) as DeviceCodeResponse;
 
-  // 2. Display instructions
+  // 2. Show URL for user to paste in browser
   console.log("");
-  console.log(`  To sign in, visit: ${codeData.verificationUri}`);
-  console.log(`  And enter code:    ${codeData.userCode}`);
+  console.log("  Paste this URL in your browser to sign in:");
   console.log("");
-  console.log("  Waiting for authorization...");
+  console.log(`  ${codeData.verificationUri}`);
+  console.log("");
 
-  // 3. Poll for completion
+  // 3. Wait for user to enter the confirmation code from the browser
+  const confirmationCode = await prompt("  Enter the code from your browser: ");
+
+  if (!confirmationCode) {
+    throw new Error("No confirmation code entered.");
+  }
+
+  // Normalize: uppercase, strip dashes/spaces
+  const normalizedCode = confirmationCode
+    .toUpperCase()
+    .replace(/[\s-]/g, "")
+    .replace(/^(.{4})/, "$1-");
+
+  console.log("  Verifying...");
+
+  // 4. Poll with deviceCode + confirmationCode
   let pollInterval = codeData.interval * 1000;
 
   while (Date.now() < codeData.expiresAt) {
-    await sleep(pollInterval);
-
     const pollRes = await fetch(`${siteUrl}/api/auth/device/poll`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceCode: codeData.deviceCode }),
+      body: JSON.stringify({
+        deviceCode: codeData.deviceCode,
+        confirmationCode: normalizedCode,
+      }),
     });
 
     if (pollRes.status === 429) {
       const data = (await pollRes.json()) as PollResponse;
       pollInterval = (data.interval ?? codeData.interval * 2) * 1000;
+      await sleep(pollInterval);
       continue;
     }
 
     const data = (await pollRes.json()) as PollResponse;
 
-    if (data.status === "pending") continue;
+    if (data.status === "pending") {
+      // User hasn't clicked Authorize yet — wait and retry
+      await sleep(pollInterval);
+      continue;
+    }
 
     if (data.status === "authorized") {
       writeTokens({
@@ -94,6 +133,12 @@ export async function deviceLogin(): Promise<{
       });
 
       return { email: data.user!.email, name: data.user!.name };
+    }
+
+    if (data.status === "invalid_code") {
+      throw new Error(
+        "Invalid confirmation code. Make sure you copied the code from the browser correctly.",
+      );
     }
 
     if (data.status === "expired") {
