@@ -102,7 +102,9 @@ const env = getActiveEnv();
 
 /** Convex deployment URL (switches with `fml env`) */
 export const CONVEX_URL: string = (
-  process.env.FML_CONVEX_URL ?? env.convexUrl ?? ""
+  process.env.FML_CONVEX_URL ??
+  env.convexUrl ??
+  ""
 ).replace(/\/$/, "");
 
 /** WorkOS API base URL */
@@ -113,3 +115,11 @@ export const WORKOS_AUTH_URL = "https://auth.fml.inc";
 
 /** Path to auth token store (per-environment) */
 export const AUTH_STORE_PATH = path.join(FML_DATA_DIR, `auth.${env.name}.json`);
+
+/** Convex site URL (HTTP actions) — derived from CONVEX_URL */
+export function getSiteUrl(): string {
+  return CONVEX_URL.replace(".convex.cloud", ".convex.site").replace(
+    /:\d+$/,
+    "",
+  );
+}

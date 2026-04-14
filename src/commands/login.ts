@@ -1,5 +1,6 @@
 import type { FunctionReference } from "convex/server";
-import { login } from "../auth/oauth.js";
+import { login, canOpenBrowser } from "../auth/oauth.js";
+import { deviceLogin } from "../auth/device-flow.js";
 import { getValidToken, setSelectedOrg } from "../auth/token-store.js";
 import { createApiClient } from "../convex-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
@@ -40,6 +41,12 @@ async function linkGitHubIdentity(): Promise<void> {
     const fmlToken = await getValidToken();
     if (!fmlToken) {
       console.warn("[fml] No FML token available — skipping identity link");
+      return;
+    }
+
+    // Service tokens (device flow) can't call JWT-authenticated Convex mutations.
+    // Identity is already attributed server-side via actAsExternalId on the token.
+    if (fmlToken.startsWith("fml_st_")) {
       return;
     }
 
@@ -95,7 +102,7 @@ async function selectOrg(): Promise<void> {
   }
 }
 
-export async function handleLogin(): Promise<void> {
+export async function handleLogin(opts?: { device?: boolean }): Promise<void> {
   const { name: envName } = getActiveEnv();
 
   // Skip OAuth if already authenticated — still run post-login tasks
@@ -116,8 +123,16 @@ export async function handleLogin(): Promise<void> {
 
   console.log(`Signing in to FML (${envName})...`);
   try {
-    const { email, name } = await login();
-    console.log(`\nLogged in as ${name} (${email})`);
+    const useDeviceFlow = opts?.device || !(await canOpenBrowser());
+    let result: { email: string; name: string };
+
+    if (useDeviceFlow) {
+      result = await deviceLogin();
+    } else {
+      result = await login();
+    }
+
+    console.log(`\nLogged in as ${result.name} (${result.email})`);
 
     await linkGitHubIdentity();
     await selectOrg();

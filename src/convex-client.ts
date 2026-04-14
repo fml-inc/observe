@@ -102,8 +102,13 @@ export function createApiClient(token: string) {
       try {
         if (isServiceToken) {
           // Service token path: POST to HTTP endpoint (Convex can't validate non-JWT tokens)
-          // Thread user identity from sandbox agent if available
-          const userExternalId = process.env.FML_USER_EXTERNAL_ID;
+          // Thread user identity: sandbox agents set FML_USER_EXTERNAL_ID;
+          // device-flow logins fall back to the id stashed on the stored token
+          // so tools can execute with the real user context even though the
+          // token's actAsExternalId is the namespaced system:cli:* string.
+          const { readTokens } = await import("./auth/token-store.js");
+          const userExternalId =
+            process.env.FML_USER_EXTERNAL_ID ?? readTokens()?.user.id;
           const res = await fetch(`${getSiteUrl()}/api/tools/execute`, {
             method: "POST",
             headers: {

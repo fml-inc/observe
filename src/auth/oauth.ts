@@ -19,6 +19,40 @@ async function fetchWorkosClientId(): Promise<string> {
 }
 
 /**
+ * Detect if a browser can be opened on this machine.
+ * Returns false for headless environments (containers, SSH, no display).
+ */
+export async function canOpenBrowser(): Promise<boolean> {
+  // Explicit overrides
+  if (process.env.FML_DEVICE_FLOW === "1") return false;
+  if (process.env.FML_NO_BROWSER === "1") return false;
+
+  // Linux without a display server
+  if (
+    process.platform === "linux" &&
+    !process.env.DISPLAY &&
+    !process.env.WAYLAND_DISPLAY
+  ) {
+    return false;
+  }
+
+  // Remote/container environments
+  if (process.env.SSH_CONNECTION) return false;
+  if (process.env.CODESPACES) return false;
+  if (process.env.REMOTE_CONTAINERS) return false;
+
+  // Container detection
+  try {
+    const fs = await import("node:fs");
+    if (fs.existsSync("/.dockerenv")) return false;
+  } catch {
+    // ignore
+  }
+
+  return true;
+}
+
+/**
  * Run the WorkOS PKCE OAuth flow:
  * 1. Generate code_verifier + code_challenge
  * 2. Start local HTTP server for callback
