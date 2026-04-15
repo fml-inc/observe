@@ -8,6 +8,12 @@ import { FML_DATA_DIR } from "./dirs.js";
 export const DEFAULT_PROD_URL =
   "https://trustworthy-chihuahua-382.convex.cloud";
 
+/** Convex site URL for sync/HTTP actions — derived from DEFAULT_PROD_URL. */
+export const DEFAULT_SYNC_URL = DEFAULT_PROD_URL.replace(
+  ".convex.cloud",
+  ".convex.site",
+);
+
 /** Default sync target name created by `fml install` */
 export const DEFAULT_TARGET_NAME = "fml";
 

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { addTarget, listTargets } from "@fml-inc/panopticon/sync";
 import { printBanner } from "../banner.js";
 import {
-  DEFAULT_PROD_URL,
+  DEFAULT_SYNC_URL,
   DEFAULT_TARGET_NAME,
   writeEnvConfig,
 } from "../config.js";
@@ -200,19 +200,18 @@ export async function handleInstall(): Promise<void> {
 
   // 5. Auto-configure sync target (best-effort)
   console.log("[5/5] Configuring sync target...");
-  const prodSyncUrl = DEFAULT_PROD_URL.replace(".cloud", ".site");
   const existingTargets = listTargets();
-  const existingProd = existingTargets.find((t) => t.url === prodSyncUrl);
+  const existingProd = existingTargets.find((t) => t.url === DEFAULT_SYNC_URL);
   if (existingProd) {
     console.log(`      Production target already configured`);
   } else {
     const tokenCommand = resolveSyncTokenCommand();
     addTarget({
       name: DEFAULT_TARGET_NAME,
-      url: prodSyncUrl,
+      url: DEFAULT_SYNC_URL,
       tokenCommand,
     });
-    console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
+    console.log(`      Target "${DEFAULT_TARGET_NAME}": ${DEFAULT_SYNC_URL}`);
     if (tokenCommand) {
       console.log(`      Auth: ${tokenCommand}`);
     } else {

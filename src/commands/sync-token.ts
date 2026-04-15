@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { getValidToken } from "../auth/token-store.js";
 
 /**
@@ -18,6 +19,12 @@ export async function handleSyncToken(): Promise<void> {
     console.error("fml: not logged in. Run `fml login` to enable sync.");
     process.exit(1);
   }
-  process.stdout.write(token);
+  // Wait for drain before exiting — small writes on a pipe are usually
+  // synchronous up to PIPE_BUF, but on slow/full pipes (or non-Linux
+  // platforms) `process.exit` can cut off the write mid-flight and
+  // hand panopticon a truncated token.
+  if (!process.stdout.write(token)) {
+    await once(process.stdout, "drain");
+  }
   process.exit(0);
 }

@@ -18,6 +18,7 @@ vi.mock("@fml-inc/panopticon/sync", () => ({
 
 vi.mock("../../sync/client.js", () => ({
   resolveGitHubToken: vi.fn(),
+  resolveSyncTokenCommand: vi.fn(),
 }));
 
 import { handleSyncReset } from "../../commands/sync.js";

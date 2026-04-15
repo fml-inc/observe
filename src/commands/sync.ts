@@ -1,4 +1,4 @@
-import { CONVEX_URL, DEFAULT_TARGET_NAME } from "../config.js";
+import { DEFAULT_SYNC_URL, DEFAULT_TARGET_NAME } from "../config.js";
 import { resolveSyncTokenCommand } from "../sync/client.js";
 import {
   addTarget,
@@ -8,8 +8,6 @@ import {
   saveSyncConfig,
 } from "@fml-inc/panopticon/sync";
 import { syncPending, syncReset } from "@fml-inc/panopticon/api";
-
-const FML_SYNC_URL = CONVEX_URL.replace(".cloud", ".site");
 
 // ── Setup (convenience shortcut) ────────────────────────────────────────────
 
@@ -29,12 +27,12 @@ export async function handleSyncSetup(): Promise<void> {
   removeTarget(DEFAULT_TARGET_NAME);
   addTarget({
     name: DEFAULT_TARGET_NAME,
-    url: FML_SYNC_URL,
+    url: DEFAULT_SYNC_URL,
     tokenCommand,
   });
 
   console.log(`Sync target "${DEFAULT_TARGET_NAME}" configured:`);
-  console.log(`  URL:  ${FML_SYNC_URL}`);
+  console.log(`  URL:  ${DEFAULT_SYNC_URL}`);
   console.log(`  Auth: ${tokenCommand}`);
   console.log(`\nRestart panopticon to activate: fml stop && fml start`);
 }

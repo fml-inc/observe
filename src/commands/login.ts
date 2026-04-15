@@ -11,7 +11,7 @@ import { createApiClient } from "../convex-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
 import {
   CONVEX_URL,
-  DEFAULT_PROD_URL,
+  DEFAULT_SYNC_URL,
   DEFAULT_TARGET_NAME,
   getActiveEnv,
 } from "../config.js";
@@ -60,13 +60,6 @@ async function linkGitHubIdentity(): Promise<void> {
       return;
     }
 
-    if (!CONVEX_URL) {
-      console.warn(
-        "[fml] No Convex URL configured — skipping identity link (run fml install first)",
-      );
-      return;
-    }
-
     const { ConvexHttpClient } = await import("convex/browser");
     const client = new ConvexHttpClient(CONVEX_URL);
     client.setAuth(fmlToken);
@@ -100,26 +93,28 @@ async function linkGitHubIdentity(): Promise<void> {
  *   a custom one) → leave it alone; we don't second-guess the user's
  *   explicit choice and GH attribution is preferred when available.
  */
-function upgradeSyncTargetAfterLogin(): void {
+// Exported for unit testing; called from within handleLogin otherwise.
+export function upgradeSyncTargetAfterLogin(): void {
   try {
-    const prodSyncUrl = DEFAULT_PROD_URL.replace(".cloud", ".site");
     const config = loadSyncConfig();
     const existing = config.targets.find((t) => t.name === DEFAULT_TARGET_NAME);
     if (!existing) {
       addTarget({
         name: DEFAULT_TARGET_NAME,
-        url: prodSyncUrl,
+        url: DEFAULT_SYNC_URL,
         tokenCommand: "fml sync-token",
       });
       console.log(
         `Sync target "${DEFAULT_TARGET_NAME}" configured with fml sync-token.`,
       );
+      console.log("Restart panopticon to apply: fml stop && fml start");
       return;
     }
     if (!existing.tokenCommand && !existing.token) {
       existing.tokenCommand = "fml sync-token";
       saveSyncConfig(config);
       console.log(`Sync target "${existing.name}" now using fml sync-token.`);
+      console.log("Restart panopticon to apply: fml stop && fml start");
     }
   } catch (err: unknown) {
     // Non-fatal — login itself succeeded, worst case sync stays URL-only
