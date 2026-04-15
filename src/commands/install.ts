@@ -12,7 +12,7 @@ import {
 } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
-import { resolveGitHubToken } from "../sync/client.js";
+import { resolveSyncTokenCommand } from "../sync/client.js";
 
 const CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const CLAUDE_SETTINGS_PATH = path.join(CLAUDE_DIR, "settings.json");
@@ -206,27 +206,20 @@ export async function handleInstall(): Promise<void> {
   if (existingProd) {
     console.log(`      Production target already configured`);
   } else {
-    const ghToken = resolveGitHubToken();
-    if (ghToken) {
-      addTarget({
-        name: DEFAULT_TARGET_NAME,
-        url: prodSyncUrl,
-        tokenCommand: "gh auth token",
-      });
-      console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
-      console.log("      Auth: gh auth token");
+    const tokenCommand = resolveSyncTokenCommand();
+    addTarget({
+      name: DEFAULT_TARGET_NAME,
+      url: prodSyncUrl,
+      tokenCommand,
+    });
+    console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
+    if (tokenCommand) {
+      console.log(`      Auth: ${tokenCommand}`);
     } else {
-      // No `gh` / GitHub token — register the URL-only target anyway so
-      // commands that only need the URL (e.g. `fml login`) work. Sync
-      // itself will no-op until the user runs `fml sync setup` to attach
-      // a token.
-      addTarget({
-        name: DEFAULT_TARGET_NAME,
-        url: prodSyncUrl,
-      });
-      console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
+      // No gh and no fml login yet — target is URL-only. `fml login` will
+      // back-patch it to `fml sync-token` once the user signs in.
       console.log(
-        "      Auth: not configured — run `fml sync setup` to enable sync.",
+        "      Auth: not configured — run `fml login` to enable sync.",
       );
     }
   }

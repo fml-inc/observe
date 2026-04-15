@@ -1,5 +1,5 @@
 import { CONVEX_URL, DEFAULT_TARGET_NAME } from "../config.js";
-import { resolveGitHubToken } from "../sync/client.js";
+import { resolveSyncTokenCommand } from "../sync/client.js";
 import {
   addTarget,
   removeTarget,
@@ -16,24 +16,26 @@ const FML_SYNC_URL = CONVEX_URL.replace(".cloud", ".site");
 export async function handleSyncSetup(): Promise<void> {
   console.log("FML Sync Setup\n");
 
-  const token = resolveGitHubToken();
-  if (!token) {
+  const tokenCommand = resolveSyncTokenCommand();
+  if (!tokenCommand) {
     console.error(
-      "No GitHub token found. Set PANOPTICON_GITHUB_TOKEN or install gh CLI.",
+      "No credential available. Run `fml login` first, or set PANOPTICON_GITHUB_TOKEN / install gh CLI.",
     );
     process.exit(1);
   }
-  console.log("GitHub token: found");
 
+  // Replace any existing entry so re-running setup upgrades the target in
+  // place (e.g. URL-only → fml sync-token after first login).
+  removeTarget(DEFAULT_TARGET_NAME);
   addTarget({
     name: DEFAULT_TARGET_NAME,
     url: FML_SYNC_URL,
-    tokenCommand: "gh auth token",
+    tokenCommand,
   });
 
-  console.log(`\nSync target "${DEFAULT_TARGET_NAME}" configured:`);
+  console.log(`Sync target "${DEFAULT_TARGET_NAME}" configured:`);
   console.log(`  URL:  ${FML_SYNC_URL}`);
-  console.log(`  Auth: gh auth token (refreshed every 5 min)`);
+  console.log(`  Auth: ${tokenCommand}`);
   console.log(`\nRestart panopticon to activate: fml stop && fml start`);
 }
 
