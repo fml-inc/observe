@@ -216,8 +216,17 @@ export async function handleInstall(): Promise<void> {
       console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
       console.log("      Auth: gh auth token");
     } else {
+      // No `gh` / GitHub token — register the URL-only target anyway so
+      // commands that only need the URL (e.g. `fml login`) work. Sync
+      // itself will no-op until the user runs `fml sync setup` to attach
+      // a token.
+      addTarget({
+        name: DEFAULT_TARGET_NAME,
+        url: prodSyncUrl,
+      });
+      console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
       console.log(
-        "      Skipped (no GitHub token). Run `fml sync setup` later.",
+        "      Auth: not configured — run `fml sync setup` to enable sync.",
       );
     }
   }
