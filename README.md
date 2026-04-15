@@ -16,6 +16,16 @@ Then sign in:
 fml login
 ```
 
+## For LLM agents
+
+Setting up FML from inside a coding-agent sandbox (Claude Code, Codex, Gemini CLI, etc.)? Paste this to your agent:
+
+```
+Follow the installation instructions here: https://github.com/fml-inc/observe/blob/main/docs/agent_installation_guide.md
+```
+
+The guide covers: `npm install -g @fml-inc/fml` → `fml install` → `fml login --device` (the agent relays the verification URL to you, you paste the code back) → `fml doctor`. No browser, no `gh` CLI, no manual shell-profile edits needed.
+
 ## What it does
 
 **Local observability** — Panopticon captures OpenTelemetry signals, hook events, session files, and API traffic from Claude Code, Gemini CLI, and Codex CLI into a local SQLite database.
