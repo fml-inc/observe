@@ -27,6 +27,7 @@ import {
   handleSyncSetup,
   handleSyncStatus,
 } from "./commands/sync.js";
+import { handleSyncToken } from "./commands/sync-token.js";
 import { handleEnvShow, handleEnvSwitch } from "./commands/env.js";
 import {
   handleActivity,
@@ -248,6 +249,13 @@ sync
   .description("Reset sync watermarks")
   .argument("[name]", "Target name (resets all if omitted)")
   .action((name?: string) => handleSyncReset(name));
+
+program
+  .command("sync-token", { hidden: true })
+  .description(
+    "Print a refreshed FML access token (for panopticon tokenCommand)",
+  )
+  .action(() => handleSyncToken());
 
 // ── Data commands ───────────────────────────────────────────────────────────
 

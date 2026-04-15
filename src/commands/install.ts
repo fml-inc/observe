@@ -6,13 +6,13 @@ import { fileURLToPath } from "node:url";
 import { addTarget, listTargets } from "@fml-inc/panopticon/sync";
 import { printBanner } from "../banner.js";
 import {
-  DEFAULT_PROD_URL,
+  DEFAULT_SYNC_URL,
   DEFAULT_TARGET_NAME,
   writeEnvConfig,
 } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
-import { resolveGitHubToken } from "../sync/client.js";
+import { resolveSyncTokenCommand } from "../sync/client.js";
 
 const CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const CLAUDE_SETTINGS_PATH = path.join(CLAUDE_DIR, "settings.json");
@@ -200,24 +200,25 @@ export async function handleInstall(): Promise<void> {
 
   // 5. Auto-configure sync target (best-effort)
   console.log("[5/5] Configuring sync target...");
-  const prodSyncUrl = DEFAULT_PROD_URL.replace(".cloud", ".site");
   const existingTargets = listTargets();
-  const existingProd = existingTargets.find((t) => t.url === prodSyncUrl);
+  const existingProd = existingTargets.find((t) => t.url === DEFAULT_SYNC_URL);
   if (existingProd) {
     console.log(`      Production target already configured`);
   } else {
-    const ghToken = resolveGitHubToken();
-    if (ghToken) {
-      addTarget({
-        name: DEFAULT_TARGET_NAME,
-        url: prodSyncUrl,
-        tokenCommand: "gh auth token",
-      });
-      console.log(`      Target "${DEFAULT_TARGET_NAME}": ${prodSyncUrl}`);
-      console.log("      Auth: gh auth token");
+    const tokenCommand = resolveSyncTokenCommand();
+    addTarget({
+      name: DEFAULT_TARGET_NAME,
+      url: DEFAULT_SYNC_URL,
+      tokenCommand,
+    });
+    console.log(`      Target "${DEFAULT_TARGET_NAME}": ${DEFAULT_SYNC_URL}`);
+    if (tokenCommand) {
+      console.log(`      Auth: ${tokenCommand}`);
     } else {
+      // No gh and no fml login yet — target is URL-only. `fml login` will
+      // back-patch it to `fml sync-token` once the user signs in.
       console.log(
-        "      Skipped (no GitHub token). Run `fml sync setup` later.",
+        "      Auth: not configured — run `fml login` to enable sync.",
       );
     }
   }

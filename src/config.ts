@@ -8,6 +8,12 @@ import { FML_DATA_DIR } from "./dirs.js";
 export const DEFAULT_PROD_URL =
   "https://trustworthy-chihuahua-382.convex.cloud";
 
+/** Convex site URL for sync/HTTP actions — derived from DEFAULT_PROD_URL. */
+export const DEFAULT_SYNC_URL = DEFAULT_PROD_URL.replace(
+  ".convex.cloud",
+  ".convex.site",
+);
+
 /** Default sync target name created by `fml install` */
 export const DEFAULT_TARGET_NAME = "fml";
 
@@ -100,11 +106,19 @@ export function requireConvexUrl(): string {
 
 const env = getActiveEnv();
 
-/** Convex deployment URL (switches with `fml env`) */
+/**
+ * Convex deployment URL (switches with `fml env`).
+ *
+ * Resolution order:
+ *   1. `FML_CONVEX_URL` env var (dev/preview overrides)
+ *   2. Active panopticon sync target
+ *   3. `DEFAULT_PROD_URL` — lets a fresh `npm install -g` log in against
+ *      prod before `fml install` has had a chance to seed a sync target.
+ */
 export const CONVEX_URL: string = (
   process.env.FML_CONVEX_URL ??
   env.convexUrl ??
-  ""
+  DEFAULT_PROD_URL
 ).replace(/\/$/, "");
 
 /** WorkOS API base URL */

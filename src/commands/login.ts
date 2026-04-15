@@ -1,10 +1,20 @@
 import type { FunctionReference } from "convex/server";
+import {
+  addTarget,
+  loadSyncConfig,
+  saveSyncConfig,
+} from "@fml-inc/panopticon/sync";
 import { login, canOpenBrowser } from "../auth/oauth.js";
 import { deviceLogin } from "../auth/device-flow.js";
 import { getValidToken, setSelectedOrg } from "../auth/token-store.js";
 import { createApiClient } from "../convex-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
-import { CONVEX_URL, getActiveEnv } from "../config.js";
+import {
+  CONVEX_URL,
+  DEFAULT_SYNC_URL,
+  DEFAULT_TARGET_NAME,
+  getActiveEnv,
+} from "../config.js";
 import { Sentry } from "../sentry.js";
 
 /**
@@ -50,13 +60,6 @@ async function linkGitHubIdentity(): Promise<void> {
       return;
     }
 
-    if (!CONVEX_URL) {
-      console.warn(
-        "[fml] No Convex URL configured — skipping identity link (run fml install first)",
-      );
-      return;
-    }
-
     const { ConvexHttpClient } = await import("convex/browser");
     const client = new ConvexHttpClient(CONVEX_URL);
     client.setAuth(fmlToken);
@@ -78,6 +81,48 @@ async function linkGitHubIdentity(): Promise<void> {
 
 // Config snapshots are now synced automatically via panopticon sync —
 // no manual upload needed after login.
+
+/**
+ * After a successful login, upgrade the default sync target to use
+ * `fml sync-token` if it doesn't already have a working `tokenCommand`.
+ *
+ * - Target missing entirely → add one pointing at prod with fml sync-token.
+ * - Target exists with no tokenCommand (URL-only, written by `fml install`
+ *   on a sandbox) → attach fml sync-token.
+ * - Target already has a tokenCommand (gh auth token on a dev laptop, or
+ *   a custom one) → leave it alone; we don't second-guess the user's
+ *   explicit choice and GH attribution is preferred when available.
+ */
+// Exported for unit testing; called from within handleLogin otherwise.
+export function upgradeSyncTargetAfterLogin(): void {
+  try {
+    const config = loadSyncConfig();
+    const existing = config.targets.find((t) => t.name === DEFAULT_TARGET_NAME);
+    if (!existing) {
+      addTarget({
+        name: DEFAULT_TARGET_NAME,
+        url: DEFAULT_SYNC_URL,
+        tokenCommand: "fml sync-token",
+      });
+      console.log(
+        `Sync target "${DEFAULT_TARGET_NAME}" configured with fml sync-token.`,
+      );
+      console.log("Restart panopticon to apply: fml stop && fml start");
+      return;
+    }
+    if (!existing.tokenCommand && !existing.token) {
+      existing.tokenCommand = "fml sync-token";
+      saveSyncConfig(config);
+      console.log(`Sync target "${existing.name}" now using fml sync-token.`);
+      console.log("Restart panopticon to apply: fml stop && fml start");
+    }
+  } catch (err: unknown) {
+    // Non-fatal — login itself succeeded, worst case sync stays URL-only
+    // and the user can run `fml sync setup` manually.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[fml] Could not update sync target: ${msg}`);
+  }
+}
 
 /**
  * After login, select and persist the user's org.
@@ -116,6 +161,7 @@ export async function handleLogin(opts?: { device?: boolean }): Promise<void> {
 
     await linkGitHubIdentity();
     await selectOrg();
+    upgradeSyncTargetAfterLogin();
 
     console.log("You're all set! Restart Claude Code to use FML tools.");
     process.exit(0);
@@ -136,6 +182,7 @@ export async function handleLogin(opts?: { device?: boolean }): Promise<void> {
 
     await linkGitHubIdentity();
     await selectOrg();
+    upgradeSyncTargetAfterLogin();
 
     console.log("You're all set! Restart Claude Code to use FML tools.");
     process.exit(0);
