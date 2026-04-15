@@ -100,11 +100,19 @@ export function requireConvexUrl(): string {
 
 const env = getActiveEnv();
 
-/** Convex deployment URL (switches with `fml env`) */
+/**
+ * Convex deployment URL (switches with `fml env`).
+ *
+ * Resolution order:
+ *   1. `FML_CONVEX_URL` env var (dev/preview overrides)
+ *   2. Active panopticon sync target
+ *   3. `DEFAULT_PROD_URL` — lets a fresh `npm install -g` log in against
+ *      prod before `fml install` has had a chance to seed a sync target.
+ */
 export const CONVEX_URL: string = (
   process.env.FML_CONVEX_URL ??
   env.convexUrl ??
-  ""
+  DEFAULT_PROD_URL
 ).replace(/\/$/, "");
 
 /** WorkOS API base URL */
