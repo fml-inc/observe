@@ -302,7 +302,7 @@ program
   .description("Query a connected integration")
   .argument(
     "<provider>",
-    "Provider name (sentry, slack, github, linear, notion, freshdesk, posthog, amplitude, meta-ads)",
+    "Provider name (sentry, slack, github, linear, notion, freshdesk, stripe, posthog, amplitude, meta-ads)",
   )
   .argument("<endpoint>", "API endpoint or subcommand")
   .option("--method <method>", "HTTP method", "GET")
