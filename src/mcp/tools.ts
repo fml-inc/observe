@@ -313,6 +313,14 @@ export function registerTools(server: McpServer): void {
       endpointHelp:
         "Freshdesk REST API v2 endpoint, e.g. 'tickets', 'tickets/{id}'",
     },
+    {
+      name: "fml_query_stripe",
+      mastraId: "integration-stripe",
+      description:
+        "Query Stripe API for customers, subscriptions, charges, invoices, and revenue. Common endpoints: 'customers' (GET), 'subscriptions?status=active' (GET), 'charges' (GET), 'invoices' (GET), 'balance' (GET).",
+      endpointHelp:
+        "Stripe REST API v1 endpoint, e.g. 'customers', 'subscriptions?status=active', 'charges', 'balance'",
+    },
   ];
 
   for (const tool of integrationTools) {

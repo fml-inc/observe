@@ -12,6 +12,7 @@ const GENERIC_PROVIDERS = [
   "linear",
   "notion",
   "freshdesk",
+  "stripe",
 ];
 
 const POSTHOG_ENDPOINTS: Record<string, string> = {
