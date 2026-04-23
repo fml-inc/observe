@@ -46,14 +46,11 @@ export function writeEnvConfig(config: EnvConfig): void {
 }
 
 /**
- * Resolve the active environment by looking up the sync target.
- * Derives the .convex.cloud URL from the target's .convex.site URL.
- * Returns null convexUrl if the target is not found (panopticon not installed).
+ * Look up a panopticon sync target by name and return its Convex deployment
+ * URL (`.convex.cloud`). Returns null if panopticon isn't installed or the
+ * target isn't configured.
  */
-export function getActiveEnv(): { name: string; convexUrl: string | null } {
-  const config = readEnvConfig();
-  const name = config.active;
-
+export function resolveEnvConvexUrl(envName: string): string | null {
   try {
     const panoDataDir =
       process.env.PANOPTICON_DATA_DIR ??
@@ -75,16 +72,39 @@ export function getActiveEnv(): { name: string; convexUrl: string | null } {
     const panoConf = JSON.parse(raw) as {
       sync?: { targets?: Array<{ name: string; url: string }> };
     };
-    const target = panoConf.sync?.targets?.find((t) => t.name === name);
+    const target = panoConf.sync?.targets?.find((t) => t.name === envName);
     if (target) {
-      const convexUrl = target.url.replace(".convex.site", ".convex.cloud");
-      return { name, convexUrl };
+      return target.url.replace(".convex.site", ".convex.cloud");
     }
   } catch {
     // Panopticon config not available
   }
+  return null;
+}
 
-  return { name, convexUrl: null };
+/**
+ * Resolve the active environment by looking up the sync target.
+ * Derives the .convex.cloud URL from the target's .convex.site URL.
+ * Returns null convexUrl if the target is not found (panopticon not installed).
+ */
+export function getActiveEnv(): { name: string; convexUrl: string | null } {
+  const name = readEnvConfig().active;
+  return { name, convexUrl: resolveEnvConvexUrl(name) };
+}
+
+/** Auth store path for a specific env name (tokens are segregated per env). */
+export function authStorePathFor(envName: string): string {
+  return path.join(FML_DATA_DIR, `auth.${envName}.json`);
+}
+
+/**
+ * Env names flow into `tokenCommand` strings that panopticon shells out, so
+ * refuse anything that could carry shell metacharacters. Target names are
+ * also written to panopticon's config by this rule (see `fml env use`).
+ */
+const ENV_NAME_RE = /^[A-Za-z0-9_-]+$/;
+export function isValidEnvName(envName: string): boolean {
+  return ENV_NAME_RE.test(envName);
 }
 
 /**
@@ -104,8 +124,6 @@ export function requireConvexUrl(): string {
 
 // ── Exports ─────────────────────────────────────────────────────────────────
 
-const env = getActiveEnv();
-
 /**
  * Convex deployment URL (switches with `fml env`).
  *
@@ -117,7 +135,7 @@ const env = getActiveEnv();
  */
 export const CONVEX_URL: string = (
   process.env.FML_CONVEX_URL ??
-  env.convexUrl ??
+  getActiveEnv().convexUrl ??
   DEFAULT_PROD_URL
 ).replace(/\/$/, "");
 
@@ -127,8 +145,14 @@ export const WORKOS_API_URL = "https://api.workos.com";
 /** WorkOS authorization base URL */
 export const WORKOS_AUTH_URL = "https://auth.fml.inc";
 
-/** Path to auth token store (per-environment) */
-export const AUTH_STORE_PATH = path.join(FML_DATA_DIR, `auth.${env.name}.json`);
+/**
+ * Path to the auth token store for the *currently* active env. Resolved
+ * lazily so long-running processes that outlive an `fml env use` switch
+ * still read the correct file on the next call.
+ */
+export function authStorePath(): string {
+  return authStorePathFor(getActiveEnv().name);
+}
 
 /** Convex site URL (HTTP actions) — derived from CONVEX_URL */
 export function getSiteUrl(): string {

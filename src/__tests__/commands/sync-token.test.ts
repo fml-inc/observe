@@ -50,4 +50,15 @@ describe("fml sync-token command", () => {
     );
     expect(stdoutSpy).not.toHaveBeenCalled();
   });
+
+  it("forwards --env to getValidToken and names the env in the error", async () => {
+    mockGetValidToken.mockResolvedValue(null);
+
+    await expect(handleSyncToken({ env: "dev" })).rejects.toThrow("exit:1");
+
+    expect(mockGetValidToken).toHaveBeenCalledWith({ env: "dev" });
+    expect(stderrSpy).toHaveBeenCalledWith(
+      'fml: not logged in for env "dev". Run `fml login` to enable sync.',
+    );
+  });
 });

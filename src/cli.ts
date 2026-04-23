@@ -255,7 +255,11 @@ program
   .description(
     "Print a refreshed FML access token (for panopticon tokenCommand)",
   )
-  .action(() => handleSyncToken());
+  .option(
+    "--env <name>",
+    "Read auth for a specific env (defaults to active env)",
+  )
+  .action((opts: { env?: string }) => handleSyncToken(opts));
 
 // ── Data commands ───────────────────────────────────────────────────────────
 

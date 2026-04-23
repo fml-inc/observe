@@ -7,9 +7,10 @@ import path from "node:path";
 let tmpDir: string;
 
 vi.mock("../../config.js", () => ({
-  get AUTH_STORE_PATH() {
-    return path.join(tmpDir, "auth.json");
-  },
+  authStorePath: () => path.join(tmpDir, "auth.json"),
+  authStorePathFor: (envName: string) =>
+    path.join(tmpDir, `auth.${envName}.json`),
+  resolveEnvConvexUrl: () => null,
   CONVEX_URL: "https://test.convex.cloud",
   WORKOS_API_URL: "https://api.workos.com",
 }));
@@ -83,6 +84,16 @@ describe("token-store", () => {
       writeTokens(makeAuth({ accessToken: "stored_tok" }));
       const token = await getValidToken();
       expect(token).toBe("stored_tok");
+    });
+
+    it("reads the env-specific store when env is provided", async () => {
+      writeTokens(makeAuth({ accessToken: "default_tok" }));
+      writeTokens(makeAuth({ accessToken: "dev_tok" }), "dev");
+      writeTokens(makeAuth({ accessToken: "prod_tok" }), "prod");
+
+      expect(await getValidToken({ env: "dev" })).toBe("dev_tok");
+      expect(await getValidToken({ env: "prod" })).toBe("prod_tok");
+      expect(await getValidToken()).toBe("default_tok");
     });
   });
 });

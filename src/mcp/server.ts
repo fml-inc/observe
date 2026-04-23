@@ -9,7 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools.js";
 import { getValidToken, readTokens } from "../auth/token-store.js";
-import { AUTH_STORE_PATH } from "../config.js";
+import { authStorePath } from "../config.js";
 import { initSentry, Sentry } from "../sentry.js";
 import { parsePanopticonRunning } from "../commands/daemon.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
@@ -41,15 +41,14 @@ async function main() {
   const tokenValid = tokens ? await getValidToken() : null;
 
   if (!tokens) {
+    const storePath = authStorePath();
     try {
       const files = fs.readdirSync(FML_DATA_DIR).join(", ") || "(empty)";
       console.error(
-        `[fml] No auth file at ${AUTH_STORE_PATH}. Dir contents: ${files}`,
+        `[fml] No auth file at ${storePath}. Dir contents: ${files}`,
       );
     } catch {
-      console.error(
-        `[fml] No auth file at ${AUTH_STORE_PATH}. Dir not readable.`,
-      );
+      console.error(`[fml] No auth file at ${storePath}. Dir not readable.`);
     }
     server.resource("setup", "fml://setup", async () => ({
       contents: [
