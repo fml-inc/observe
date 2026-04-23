@@ -1,6 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { AUTH_STORE_PATH, CONVEX_URL, WORKOS_API_URL } from "../config.js";
+import {
+  CONVEX_URL,
+  WORKOS_API_URL,
+  authStorePath,
+  authStorePathFor,
+  resolveEnvConvexUrl,
+} from "../config.js";
 import { FML_DATA_DIR } from "../dirs.js";
 import { Sentry } from "../sentry.js";
 
@@ -20,25 +26,29 @@ interface StoredAuth {
   tokenType?: "oauth" | "service";
 }
 
-function ensureDir(): void {
-  const dir = path.dirname(AUTH_STORE_PATH);
+function storePathFor(envName?: string): string {
+  return envName ? authStorePathFor(envName) : authStorePath();
+}
+
+function ensureDir(envName?: string): void {
+  const dir = path.dirname(storePathFor(envName));
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
 }
 
-export function readTokens(): StoredAuth | null {
+export function readTokens(envName?: string): StoredAuth | null {
   try {
-    const data = fs.readFileSync(AUTH_STORE_PATH, "utf-8");
+    const data = fs.readFileSync(storePathFor(envName), "utf-8");
     return JSON.parse(data) as StoredAuth;
   } catch {
     return null;
   }
 }
 
-export function writeTokens(auth: StoredAuth): void {
-  ensureDir();
-  fs.writeFileSync(AUTH_STORE_PATH, JSON.stringify(auth, null, 2), {
+export function writeTokens(auth: StoredAuth, envName?: string): void {
+  ensureDir(envName);
+  fs.writeFileSync(storePathFor(envName), JSON.stringify(auth, null, 2), {
     mode: 0o600,
   });
 }
@@ -60,23 +70,39 @@ interface ServiceTokenCache {
   expiresAt: number;
 }
 
-let serviceTokenCache: ServiceTokenCache | null = null;
-let serviceRefreshPromise: Promise<string | null> | null = null;
+/**
+ * Caches and refresh-deduplication promises are keyed by env so in-process
+ * callers that read multiple envs (`getValidToken({ env: "a" })` followed by
+ * `getValidToken({ env: "b" })`) don't cross-contaminate. The sentinel
+ * "__active__" stands in for calls with no explicit env.
+ */
+const ACTIVE_KEY = "__active__";
+const serviceTokenCaches = new Map<string, ServiceTokenCache>();
+const serviceRefreshPromises = new Map<string, Promise<string | null>>();
+const oauthRefreshPromises = new Map<string, Promise<string | null>>();
+const cacheKey = (envName?: string): string => envName ?? ACTIVE_KEY;
 
 /** File where the current access token is written for panopticon's tokenCommand */
 const SERVICE_ACCESS_TOKEN_PATH = path.join(FML_DATA_DIR, "access_token");
 
-function getSiteUrl(): string {
+function getSiteUrl(envName?: string): string {
   const explicit = process.env.CONVEX_SITE_URL;
   if (explicit) return explicit.replace(/\/$/, "");
+  if (envName) {
+    const envConvexUrl = resolveEnvConvexUrl(envName);
+    if (envConvexUrl) {
+      return envConvexUrl.replace(".convex.cloud", ".convex.site");
+    }
+  }
   return CONVEX_URL.replace(".convex.cloud", ".convex.site");
 }
 
 async function refreshServiceToken(
   refreshToken: string,
+  envName?: string,
 ): Promise<string | null> {
   try {
-    const response = await fetch(`${getSiteUrl()}/api/tokens/refresh`, {
+    const response = await fetch(`${getSiteUrl(envName)}/api/tokens/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,10 +129,10 @@ async function refreshServiceToken(
       return null;
     }
 
-    serviceTokenCache = {
+    serviceTokenCaches.set(cacheKey(envName), {
       accessToken: data.accessToken,
       expiresAt: data.expiresAt,
-    };
+    });
 
     // Write to file for panopticon's tokenCommand
     try {
@@ -131,9 +157,6 @@ async function refreshServiceToken(
 
 // ── Token Resolution ────────────────────────────────────────────────────────
 
-// Mutex to prevent concurrent token refresh races
-let refreshPromise: Promise<string | null> | null = null;
-
 /**
  * Get a valid access token, refreshing if expired.
  *
@@ -142,24 +165,28 @@ let refreshPromise: Promise<string | null> | null = null;
  * 2. FML_TOKEN=fml_st_*  → use directly (legacy/CI)
  * 3. No FML_TOKEN         → OAuth flow (interactive user)
  */
-export async function getValidToken(): Promise<string | null> {
+export async function getValidToken(opts?: {
+  env?: string;
+}): Promise<string | null> {
+  const envName = opts?.env;
+  const key = cacheKey(envName);
   const envToken = process.env.FML_TOKEN;
 
   // Service refresh token → exchange for short-lived access token
   if (envToken?.startsWith("fml_srt_")) {
-    if (
-      serviceTokenCache &&
-      serviceTokenCache.expiresAt > Date.now() + 60_000
-    ) {
-      return serviceTokenCache.accessToken;
+    const cached = serviceTokenCaches.get(key);
+    if (cached && cached.expiresAt > Date.now() + 60_000) {
+      return cached.accessToken;
     }
 
-    if (serviceRefreshPromise) return serviceRefreshPromise;
-    serviceRefreshPromise = refreshServiceToken(envToken);
+    const inflight = serviceRefreshPromises.get(key);
+    if (inflight) return inflight;
+    const promise = refreshServiceToken(envToken, envName);
+    serviceRefreshPromises.set(key, promise);
     try {
-      return await serviceRefreshPromise;
+      return await promise;
     } finally {
-      serviceRefreshPromise = null;
+      serviceRefreshPromises.delete(key);
     }
   }
 
@@ -167,9 +194,13 @@ export async function getValidToken(): Promise<string | null> {
   if (envToken) return envToken;
 
   // Stored token path (OAuth or device flow)
-  const stored = readTokens();
+  const stored = readTokens(envName);
   if (!stored) {
-    console.error("[fml] Auth: no stored tokens");
+    console.error(
+      envName
+        ? `[fml] Auth: no stored tokens for env "${envName}"`
+        : "[fml] Auth: no stored tokens",
+    );
     return null;
   }
 
@@ -180,37 +211,50 @@ export async function getValidToken(): Promise<string | null> {
 
   // Device flow tokens: refresh via /api/tokens/refresh (same as sandbox tokens)
   if (stored.tokenType === "service") {
-    if (serviceRefreshPromise) return serviceRefreshPromise;
-    serviceRefreshPromise = (async () => {
-      const newAccessToken = await refreshServiceToken(stored.refreshToken);
-      if (newAccessToken && serviceTokenCache) {
-        writeTokens({
-          ...stored,
-          accessToken: newAccessToken,
-          expiresAt: serviceTokenCache.expiresAt,
-        });
+    const inflight = serviceRefreshPromises.get(key);
+    if (inflight) return inflight;
+    const promise = (async () => {
+      const newAccessToken = await refreshServiceToken(
+        stored.refreshToken,
+        envName,
+      );
+      const cached = serviceTokenCaches.get(key);
+      if (newAccessToken && cached) {
+        writeTokens(
+          {
+            ...stored,
+            accessToken: newAccessToken,
+            expiresAt: cached.expiresAt,
+          },
+          envName,
+        );
       }
       return newAccessToken;
     })();
+    serviceRefreshPromises.set(key, promise);
     try {
-      return await serviceRefreshPromise;
+      return await promise;
     } finally {
-      serviceRefreshPromise = null;
+      serviceRefreshPromises.delete(key);
     }
   }
 
   // OAuth tokens: refresh via WorkOS
-  if (refreshPromise) return refreshPromise;
-
-  refreshPromise = refreshToken(stored);
+  const inflight = oauthRefreshPromises.get(key);
+  if (inflight) return inflight;
+  const promise = refreshToken(stored, envName);
+  oauthRefreshPromises.set(key, promise);
   try {
-    return await refreshPromise;
+    return await promise;
   } finally {
-    refreshPromise = null;
+    oauthRefreshPromises.delete(key);
   }
 }
 
-async function refreshToken(stored: StoredAuth): Promise<string | null> {
+async function refreshToken(
+  stored: StoredAuth,
+  envName?: string,
+): Promise<string | null> {
   if (!stored.workosClientId) {
     console.error(
       "[fml] Auth: token expired, missing workosClientId — run `fml login`",
@@ -268,7 +312,7 @@ async function refreshToken(stored: StoredAuth): Promise<string | null> {
       workosClientId: stored.workosClientId,
     };
 
-    writeTokens(refreshed);
+    writeTokens(refreshed, envName);
     return refreshed.accessToken;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

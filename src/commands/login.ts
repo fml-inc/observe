@@ -12,8 +12,8 @@ import { resolveGitHubToken } from "../sync/client.js";
 import {
   CONVEX_URL,
   DEFAULT_SYNC_URL,
-  DEFAULT_TARGET_NAME,
   getActiveEnv,
+  isValidEnvName,
 } from "../config.js";
 import { Sentry } from "../sentry.js";
 
@@ -83,39 +83,51 @@ async function linkGitHubIdentity(): Promise<void> {
 // no manual upload needed after login.
 
 /**
- * After a successful login, upgrade the default sync target to use
- * `fml sync-token` if it doesn't already have a working `tokenCommand`.
+ * After a successful login, pin the active env's sync target to
+ * `fml sync-token --env <activeEnv>` so panopticon always reads the auth
+ * file for that env (even when the user later switches active envs).
  *
- * - Target missing entirely → add one pointing at prod with fml sync-token.
- * - Target exists with no tokenCommand (URL-only, written by `fml install`
- *   on a sandbox) → attach fml sync-token.
- * - Target already has a tokenCommand (gh auth token on a dev laptop, or
- *   a custom one) → leave it alone; we don't second-guess the user's
- *   explicit choice and GH attribution is preferred when available.
+ * - Target missing entirely → add one pointing at prod with the pinned cmd.
+ * - Target is URL-only or uses the legacy `fml sync-token` (no --env) →
+ *   upgrade to the pinned form.
+ * - Target has an unrelated tokenCommand (gh auth token, custom) or a
+ *   static token → leave it alone; the user made an explicit choice.
  */
 // Exported for unit testing; called from within handleLogin otherwise.
 export function upgradeSyncTargetAfterLogin(): void {
   try {
+    const { name: envName } = getActiveEnv();
+    // envName is interpolated into tokenCommand, which panopticon shells out.
+    // Guard against metacharacters in a corrupted env.json.
+    if (!isValidEnvName(envName)) {
+      console.warn(
+        `[fml] Skipping sync-target upgrade: env name "${envName}" contains unsafe characters.`,
+      );
+      return;
+    }
+    const pinnedCmd = `fml sync-token --env ${envName}`;
     const config = loadSyncConfig();
-    const existing = config.targets.find((t) => t.name === DEFAULT_TARGET_NAME);
+    const existing = config.targets.find((t) => t.name === envName);
     if (!existing) {
       addTarget({
-        name: DEFAULT_TARGET_NAME,
+        name: envName,
         url: DEFAULT_SYNC_URL,
-        tokenCommand: "fml sync-token",
+        tokenCommand: pinnedCmd,
       });
-      console.log(
-        `Sync target "${DEFAULT_TARGET_NAME}" configured with fml sync-token.`,
-      );
+      console.log(`Sync target "${envName}" configured with ${pinnedCmd}.`);
       console.log("Restart panopticon to apply: fml stop && fml start");
       return;
     }
-    if (!existing.tokenCommand && !existing.token) {
-      existing.tokenCommand = "fml sync-token";
-      saveSyncConfig(config);
-      console.log(`Sync target "${existing.name}" now using fml sync-token.`);
-      console.log("Restart panopticon to apply: fml stop && fml start");
+    if (existing.token) return;
+    if (existing.tokenCommand === pinnedCmd) return;
+    if (existing.tokenCommand && existing.tokenCommand !== "fml sync-token") {
+      // Preserve explicit choices (e.g. `gh auth token`, custom commands).
+      return;
     }
+    existing.tokenCommand = pinnedCmd;
+    saveSyncConfig(config);
+    console.log(`Sync target "${envName}" now using ${pinnedCmd}.`);
+    console.log("Restart panopticon to apply: fml stop && fml start");
   } catch (err: unknown) {
     // Non-fatal — login itself succeeded, worst case sync stays URL-only
     // and the user can run `fml sync setup` manually.

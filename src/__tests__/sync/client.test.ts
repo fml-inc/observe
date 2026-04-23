@@ -11,6 +11,11 @@ vi.mock("../../auth/token-store.js", () => ({
   readTokens: (...args: unknown[]) => mockReadTokens(...args),
 }));
 
+vi.mock("../../config.js", () => ({
+  getActiveEnv: () => ({ name: "fml", convexUrl: null }),
+  isValidEnvName: (s: string) => /^[A-Za-z0-9_-]+$/.test(s),
+}));
+
 describe("resolveSyncTokenCommand", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +40,7 @@ describe("resolveSyncTokenCommand", () => {
     expect(mockExecSync).not.toHaveBeenCalled();
   });
 
-  it("falls back to 'fml sync-token' when gh fails but a login exists", async () => {
+  it("falls back to 'fml sync-token --env <active>' when gh fails but a login exists", async () => {
     mockExecSync.mockImplementation(() => {
       throw new Error("gh not found");
     });
@@ -47,7 +52,7 @@ describe("resolveSyncTokenCommand", () => {
     });
     const { resolveSyncTokenCommand } = await import("../../sync/client.js");
 
-    expect(resolveSyncTokenCommand()).toBe("fml sync-token");
+    expect(resolveSyncTokenCommand()).toBe("fml sync-token --env fml");
   });
 
   it("returns undefined when neither gh nor a login is available", async () => {

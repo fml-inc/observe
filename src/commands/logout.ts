@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import { AUTH_STORE_PATH } from "../config.js";
+import { authStorePath } from "../config.js";
 
 export function handleLogout(): void {
   try {
-    fs.unlinkSync(AUTH_STORE_PATH);
+    fs.unlinkSync(authStorePath());
   } catch {
     // File doesn't exist, that's fine
   }

@@ -13,10 +13,15 @@ import { getValidToken } from "../auth/token-store.js";
  * panopticon's token helper treats it as a missed refresh rather than
  * caching an empty string as the bearer.
  */
-export async function handleSyncToken(): Promise<void> {
-  const token = await getValidToken();
+export async function handleSyncToken(opts?: {
+  env?: string;
+}): Promise<void> {
+  const token = await getValidToken({ env: opts?.env });
   if (!token) {
-    console.error("fml: not logged in. Run `fml login` to enable sync.");
+    const suffix = opts?.env ? ` for env "${opts.env}"` : "";
+    console.error(
+      `fml: not logged in${suffix}. Run \`fml login\` to enable sync.`,
+    );
     process.exit(1);
   }
   // Wait for drain before exiting — small writes on a pipe are usually

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import fs from "node:fs";
 
 vi.mock("../../config.js", () => ({
-  AUTH_STORE_PATH: "/tmp/fml-test-logout-auth.json",
+  authStorePath: () => "/tmp/fml-test-logout-auth.json",
 }));
 
 import { handleLogout } from "../../commands/logout.js";
