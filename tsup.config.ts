@@ -28,7 +28,7 @@ export default defineConfig({
     ),
   },
   format: ["esm"],
-  target: "node22",
+  target: "node24",
   platform: "node",
   splitting: true,
   clean: true,
