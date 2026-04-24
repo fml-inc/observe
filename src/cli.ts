@@ -418,10 +418,14 @@ program
 
 program
   .command("run-analysis", { hidden: true })
-  .description("Run deep codebase analysis workflows")
+  .description("Run deep codebase analysis workflows on a repository")
   .option(
     "--prompts <list>",
     "Comma-separated: security,architecture,code-quality,performance,ux,dependencies,cost,ai-architecture,ai-security",
+  )
+  .option(
+    "--repo-id <id>",
+    "Target repository ID. Omit for single-repo orgs (auto-pick).",
   )
   .action((opts) => handleRunAnalysis(opts));
 

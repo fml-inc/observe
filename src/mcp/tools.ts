@@ -226,7 +226,7 @@ export function registerTools(server: McpServer): void {
 
   server.tool(
     "fml_run_analysis_workflow",
-    "Run comprehensive codebase analysis workflows. Available prompts: deep_security_auditor, deep_architecture_auditor, deep_code_quality_auditor, deep_performance_auditor, deep_ux_auditor, deep_dependencies_auditor, deep_cost_auditor, deep_ai_architecture_integration, deep_ai_security.",
+    "Run comprehensive codebase analysis workflows on a repository. Available prompts: deep_security_auditor, deep_architecture_auditor, deep_code_quality_auditor, deep_performance_auditor, deep_ux_auditor, deep_dependencies_auditor, deep_cost_auditor, deep_ai_architecture_integration, deep_ai_security. The backend auto-picks the repo for single-repo orgs; pass `repositoryId` explicitly when the org has multiple repos (the tool will otherwise return a clarifying error listing them).",
     {
       selectedPromptKeys: z
         .array(
@@ -245,6 +245,12 @@ export function registerTools(server: McpServer): void {
         .optional()
         .describe(
           "Array of specific analysis prompts to run. If not provided, runs default set.",
+        ),
+      repositoryId: z
+        .string()
+        .optional()
+        .describe(
+          "Target repository ID. Omit for single-repo orgs (auto-pick). Required when the org has multiple repos — the tool will list them in its error if not provided.",
         ),
     },
     async (args) => toolHandler("run-analysis-workflow", args),
