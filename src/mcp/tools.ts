@@ -222,7 +222,7 @@ export function registerTools(server: McpServer): void {
         .number()
         .optional()
         .describe(
-          "Maximum number of results to return per repository (default 20)",
+          "Maximum number of results to return total across all matched repos (default 20)",
         ),
       repositoryId: z
         .string()

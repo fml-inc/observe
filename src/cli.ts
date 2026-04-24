@@ -414,7 +414,7 @@ program
   .argument("<query>", "Search query")
   .option("--status <status>", "Filter by status (complete, running, failed)")
   .option("--prompt-key <key>", "Exact analysis type to filter by")
-  .option("--limit <n>", "Max results per repo (default 20)")
+  .option("--limit <n>", "Max results total across matched repos (default 20)")
   .option(
     "--repo-id <id>",
     "Limit search to one repository. Omit to search every repo in the org.",
