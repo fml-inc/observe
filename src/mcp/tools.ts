@@ -250,6 +250,23 @@ export function registerTools(server: McpServer): void {
     async (args) => toolHandler("run-analysis-workflow", args),
   );
 
+  server.tool(
+    "fml_run_team_analysis",
+    "Run a team-wide AI coding practice analysis for the caller's organization. Produces a structured report with per-person narratives covering tool usage, collaboration patterns, configuration, and notable changes. Use for prompts like 'run team analysis for the last 14 days' or 'how is the team doing?'. Kicks a durable Convex workflow and returns immediately with a reportId; when called inside a conversation, a completion message is posted back to that conversation when the workflow finishes — wait for that follow-up turn, do not poll. Idempotent: if a run is already in flight, returns the existing reportId with started=false. Requires org-owner access and at least one running dev environment.",
+    {
+      windowDays: z
+        .number()
+        .int()
+        .min(1)
+        .max(90)
+        .optional()
+        .describe(
+          "Size of the analysis window in days. Defaults to 30. Clamped to [1, 90]. Match the user's phrasing: 'last 14 days' → 14, 'last month' → 30, 'this week' → 7.",
+        ),
+    },
+    async (args) => toolHandler("run-team-analysis", args),
+  );
+
   // ── Integrations ───────────────────────────────────────────────────────────
 
   server.tool(

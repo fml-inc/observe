@@ -38,3 +38,21 @@ export async function handleRunAnalysis(opts: {
   }
   console.log(JSON.stringify(result.result, null, 2));
 }
+
+export async function handleRunTeamAnalysis(opts: {
+  windowDays?: string;
+}): Promise<void> {
+  const api = await getAuthenticatedClient();
+  if (!api) {
+    console.error("Not authenticated. Run `fml login`.");
+    process.exit(1);
+  }
+  const result = await api.callBackend("run-team-analysis", {
+    windowDays: opts.windowDays ? parseInt(opts.windowDays, 10) : undefined,
+  });
+  if (!result.ok) {
+    console.error(result.error || "Request failed");
+    process.exit(1);
+  }
+  console.log(JSON.stringify(result.result, null, 2));
+}

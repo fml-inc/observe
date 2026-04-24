@@ -54,6 +54,7 @@ import {
 import {
   handleSearchAnalysis,
   handleRunAnalysis,
+  handleRunTeamAnalysis,
 } from "./commands/analysis.js";
 import {
   handleIntegrations,
@@ -423,6 +424,15 @@ program
     "Comma-separated: security,architecture,code-quality,performance,ux,dependencies,cost,ai-architecture,ai-security",
   )
   .action((opts) => handleRunAnalysis(opts));
+
+program
+  .command("run-team-analysis", { hidden: true })
+  .description("Run a team-wide AI coding practice analysis for the org")
+  .option(
+    "--window-days <n>",
+    "Size of the analysis window in days (default 30, min 1, max 90)",
+  )
+  .action((opts) => handleRunTeamAnalysis(opts));
 
 // ── Integration commands ───────────────────────────────────────────────────
 
