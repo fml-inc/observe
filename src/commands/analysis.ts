@@ -23,6 +23,7 @@ export async function handleSearchAnalysis(
 
 export async function handleRunAnalysis(opts: {
   prompts?: string;
+  repoId?: string;
 }): Promise<void> {
   const api = await getAuthenticatedClient();
   if (!api) {
@@ -31,6 +32,7 @@ export async function handleRunAnalysis(opts: {
   }
   const result = await api.callBackend("run-analysis-workflow", {
     selectedPromptKeys: opts.prompts?.split(","),
+    repositoryId: opts.repoId,
   });
   if (!result.ok) {
     console.error(result.error || "Request failed");
