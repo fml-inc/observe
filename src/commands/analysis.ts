@@ -2,7 +2,12 @@ import { getAuthenticatedClient } from "../convex-client.js";
 
 export async function handleSearchAnalysis(
   query: string,
-  opts: { status?: string; limit?: string },
+  opts: {
+    status?: string;
+    limit?: string;
+    repoId?: string;
+    promptKey?: string;
+  },
 ): Promise<void> {
   const api = await getAuthenticatedClient();
   if (!api) {
@@ -13,6 +18,8 @@ export async function handleSearchAnalysis(
     query,
     status: opts.status,
     limit: opts.limit ? parseInt(opts.limit, 10) : undefined,
+    promptKey: opts.promptKey,
+    ...(opts.repoId ? { repositoryId: opts.repoId } : {}),
   });
   if (!result.ok) {
     console.error(result.error || "Request failed");
