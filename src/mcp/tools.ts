@@ -201,6 +201,40 @@ export function registerTools(server: McpServer): void {
   // ── Analysis ───────────────────────────────────────────────────────────────
 
   server.tool(
+    "fml_search_analysis",
+    "Search analysis results produced by `fml_run_analysis_workflow`. USE FOR: finding analyses by topic, type, or status across a repo (or all repos in the org). FILTERS: query (text search), promptKey (exact type like 'deep_security_auditor'), status (complete, running, failed). Pass `repositoryId` to limit the search, or omit to fan out across every repo in the org.",
+    {
+      query: z
+        .string()
+        .optional()
+        .describe("Text search across analysis type and content"),
+      promptKey: z
+        .string()
+        .optional()
+        .describe(
+          "Exact filter by analysis type (e.g., 'deep_security_auditor')",
+        ),
+      status: z
+        .enum(["complete", "running", "created", "failed"])
+        .optional()
+        .describe("Filter by status"),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of results to return per repository (default 20)",
+        ),
+      repositoryId: z
+        .string()
+        .optional()
+        .describe(
+          "Limit to one repository. Omit to search every repo in the caller's organization.",
+        ),
+    },
+    async (args) => toolHandler("search-analysis", args),
+  );
+
+  server.tool(
     "fml_run_analysis_workflow",
     "Run comprehensive codebase analysis workflows on a repository. Available prompts: deep_security_auditor, deep_architecture_auditor, deep_code_quality_auditor, deep_performance_auditor, deep_ux_auditor, deep_dependencies_auditor, deep_cost_auditor, deep_ai_architecture_integration, deep_ai_security. The backend auto-picks the repo for single-repo orgs; pass `repositoryId` explicitly when the org has multiple repos (the tool will otherwise return a clarifying error listing them).",
     {
