@@ -52,7 +52,6 @@ import {
   handleMemoryDelete,
 } from "./commands/memory.js";
 import {
-  handleSearchAnalysis,
   handleRunAnalysis,
   handleRunTeamAnalysis,
 } from "./commands/analysis.js";
@@ -407,14 +406,6 @@ memory
   .action((fileId) => handleMemoryDelete(fileId));
 
 // ── Analysis commands ──────────────────────────────────────────────────────
-
-program
-  .command("search-analysis", { hidden: true })
-  .description("Search codebase analysis results")
-  .argument("<query>", "Search query")
-  .option("--status <status>", "Filter by status")
-  .option("--limit <n>", "Max results")
-  .action((query, opts) => handleSearchAnalysis(query, opts));
 
 program
   .command("run-analysis", { hidden: true })

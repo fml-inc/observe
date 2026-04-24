@@ -201,30 +201,6 @@ export function registerTools(server: McpServer): void {
   // ── Analysis ───────────────────────────────────────────────────────────────
 
   server.tool(
-    "fml_search_analysis",
-    "Search analysis results. USE FOR: finding analyses by topic, type, or status. RETURNS: full analysis content.",
-    {
-      query: z
-        .string()
-        .optional()
-        .describe("Text search across analysis type and content"),
-      promptKey: z
-        .string()
-        .optional()
-        .describe("Exact filter by analysis type (e.g., 'analyze-codebase')"),
-      status: z
-        .enum(["complete", "running", "created", "failed"])
-        .optional()
-        .describe("Filter by status"),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of results to return (default 20)"),
-    },
-    async (args) => toolHandler("search-analysis", args),
-  );
-
-  server.tool(
     "fml_run_analysis_workflow",
     "Run comprehensive codebase analysis workflows on a repository. Available prompts: deep_security_auditor, deep_architecture_auditor, deep_code_quality_auditor, deep_performance_auditor, deep_ux_auditor, deep_dependencies_auditor, deep_cost_auditor, deep_ai_architecture_integration, deep_ai_security. The backend auto-picks the repo for single-repo orgs; pass `repositoryId` explicitly when the org has multiple repos (the tool will otherwise return a clarifying error listing them).",
     {
