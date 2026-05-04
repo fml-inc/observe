@@ -297,6 +297,8 @@ program
   .description("Search across all sessions")
   .argument("<query>", "Text to search for")
   .option("--since <duration>", 'Time filter, e.g. "24h", "7d"')
+  .option("--user <githubUsername>", "Filter by GitHub username")
+  .option("--github-username <githubUsername>", "Filter by GitHub username")
   .option("--limit <n>", "Max results")
   .action((query, opts) => handleSearch(query, opts));
 
