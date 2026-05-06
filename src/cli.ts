@@ -71,6 +71,11 @@ import {
   handleConfigList,
   handleConfigDetail,
 } from "./commands/config-snapshots.js";
+import {
+  handleToolsList,
+  handleToolsDescribe,
+  handleToolsCall,
+} from "./commands/tools.js";
 import { printBanner } from "./banner.js";
 
 await initSentry();
@@ -93,7 +98,7 @@ const program = new Command()
       : "dev",
   );
 
-program
+const tools = program
   .command("tools", { hidden: true })
   .description("List all available CLI commands (including hidden agent tools)")
   .action(() => {
@@ -122,6 +127,28 @@ program
       });
     console.log(lines.join("\n\n"));
   });
+
+tools
+  .command("list")
+  .description("List backend tools available via the dynamic catalog")
+  .option("--category <category>", "Filter by category")
+  .option("--json", "Output as JSON")
+  .action((opts) => handleToolsList(opts));
+
+tools
+  .command("describe")
+  .description("Show description and input schema for a backend tool")
+  .argument("<name>", "Tool name (e.g. integration-github)")
+  .option("--json", "Output as JSON")
+  .action((name, opts) => handleToolsDescribe(name, opts));
+
+tools
+  .command("call")
+  .description("Invoke a backend tool by name with JSON args")
+  .argument("<name>", "Tool name")
+  .option("--args <json>", "Args as a JSON string (defaults to {})")
+  .option("--file <path>", "Path to a JSON file containing args")
+  .action((name, opts) => handleToolsCall(name, opts));
 
 program
   .command("install")

@@ -12,6 +12,27 @@ import type {
 
 // ── Shared plumbing ─────────────────────────────────────────────────────────
 
+export type ToolCategory =
+  | "messages"
+  | "slack"
+  | "skills"
+  | "analysis"
+  | "integrations"
+  | "engineering"
+  | "memory"
+  | "automations"
+  | "amplitude"
+  | "posthog"
+  | "meta-ads";
+
+export interface PublicToolDescriptor {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  category?: ToolCategory;
+  experimental?: boolean;
+}
+
 export interface ToolResult {
   ok: boolean;
   result?: unknown;
@@ -161,6 +182,45 @@ export function createApiClient(token: string) {
           };
         }
         return { ok: false, error: msg };
+      }
+    },
+
+    // ── Tool catalog ─────────────────────────────────────────────────────
+
+    async listTools(pluginVersion?: string): Promise<PublicToolDescriptor[]> {
+      try {
+        if (isServiceToken) {
+          const url = new URL(`${getSiteUrl()}/api/tools/list`);
+          if (pluginVersion) url.searchParams.set("pluginVersion", pluginVersion);
+          const res = await fetch(url.toString(), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const text = await res.text();
+          let data: { ok: boolean; descriptors?: PublicToolDescriptor[]; error?: string };
+          try {
+            data = JSON.parse(text) as typeof data;
+          } catch {
+            throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+          }
+          if (!data.ok || !data.descriptors) {
+            throw new Error(data.error ?? `HTTP ${res.status}`);
+          }
+          return data.descriptors;
+        }
+
+        const client = await getClient();
+        return await client.query<PublicToolDescriptor[]>(
+          ref<"query">("user/plugin_tools:listTools"),
+          pluginVersion ? { pluginVersion } : {},
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("Unauthorized") || msg.includes("not authenticated")) {
+          throw new Error(
+            "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
+          );
+        }
+        throw err;
       }
     },
 
