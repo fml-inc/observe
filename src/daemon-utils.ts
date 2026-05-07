@@ -56,7 +56,7 @@ export function panopticonExec(
   const bin = resolvePanopticonBin();
   if (!bin) return { ok: false, stdout: "panopticon binary not found" };
   try {
-    const stdout = execFileSync("node", [bin, ...args], {
+    const stdout = execFileSync(bin, args, {
       encoding: "utf-8",
       timeout,
     });
