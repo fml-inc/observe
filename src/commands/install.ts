@@ -199,8 +199,10 @@ export async function handleInstall(): Promise<void> {
         });
       }
       console.log("      Plugin registered via Claude Code CLI");
-    } catch {
-      console.log("      warn: claude CLI not found, run 'claude plugin install fml@local-plugins' manually");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`      warn: claude plugin install/update failed: ${msg}`);
+      console.log("      Run 'claude plugin install fml@local-plugins' manually");
     }
   }
   console.log();

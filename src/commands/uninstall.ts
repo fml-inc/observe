@@ -64,9 +64,6 @@ export function handleUninstall(opts: {
     // Clean all scopes from installed_plugins.json directly — the CLI
     // can only remove project-scoped entries from within that project dir,
     // so we handle it ourselves.
-    // Clean all scopes from installed_plugins.json directly — the CLI
-    // can only remove project-scoped entries from within that project dir,
-    // so we handle it ourselves.
     const installedPluginsPath = path.join(
       CLAUDE_DIR,
       "plugins",

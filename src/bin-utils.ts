@@ -9,14 +9,19 @@ const DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
  * Resolve a CLI binary by walking process.env.PATH. On Windows, probe each
  * process.env.PATHEXT extension. Returns an absolute path or null.
  *
+ * Pass the bare command name (e.g. "npm", not "npm.cmd"); the extension is
+ * applied via PATHEXT on Windows. If the caller does include an extension,
+ * it's used as-is.
+ *
  * Replaces `which`/`where`: avoids spawning a child process and works the
  * same on macOS, Linux, and Windows.
  */
 export function resolveBin(name: string): string | null {
   const pathDirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
-  const exts = IS_WIN
-    ? (process.env.PATHEXT ?? DEFAULT_PATHEXT).split(";").filter(Boolean)
-    : [""];
+  const hasExt = path.extname(name) !== "";
+  const exts = !IS_WIN || hasExt
+    ? [""]
+    : (process.env.PATHEXT ?? DEFAULT_PATHEXT).split(";").filter(Boolean);
 
   for (const dir of pathDirs) {
     for (const ext of exts) {

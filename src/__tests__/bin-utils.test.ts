@@ -60,6 +60,15 @@ describe("resolveBin", () => {
     process.env.PATHEXT = ".com;.exe;.bat;.cmd";
     expect(resolveBin("panopticon")).toBe(target);
   });
+
+  it("uses the extension as-is when the name already includes one", () => {
+    const target = path.join(tmpDir, "panopticon.cmd");
+    fs.writeFileSync(target, "x", { mode: 0o755 });
+    process.env.PATH = tmpDir;
+    // Even on Windows with PATHEXT set, an explicit extension is honored
+    // directly rather than being appended to (no panopticon.cmd.cmd probe).
+    expect(resolveBin("panopticon.cmd")).toBe(target);
+  });
 });
 
 describe("quoteWinArg", () => {

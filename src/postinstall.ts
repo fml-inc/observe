@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fmlBin = join(__dirname, "..", "bin", "fml");
 
 try {
-  execFileSync("node", [fmlBin, "install"], {
+  execFileSync(process.execPath, [fmlBin, "install"], {
     stdio: "inherit",
     timeout: 120_000,
   });
