@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { quoteWinArg, resolveBin } from "../bin-utils.js";
 
 describe("resolveBin", () => {
+  const IS_WIN = process.platform === "win32";
+  // Windows: bare filenames aren't executable; we need an extension that's in
+  // PATHEXT. Use lowercase so the returned path (built from `name + ext`)
+  // matches what we wrote.
+  const BIN_NAME = IS_WIN ? "panopticon.cmd" : "panopticon";
   let tmpDir: string;
   let origPath: string | undefined;
   let origPathExt: string | undefined;
@@ -13,6 +18,9 @@ describe("resolveBin", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fml-resolve-"));
     origPath = process.env.PATH;
     origPathExt = process.env.PATHEXT;
+    if (IS_WIN) {
+      process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+    }
   });
 
   afterEach(() => {
@@ -24,7 +32,7 @@ describe("resolveBin", () => {
   });
 
   it("finds a binary on PATH", () => {
-    const target = path.join(tmpDir, "panopticon");
+    const target = path.join(tmpDir, BIN_NAME);
     fs.writeFileSync(target, "#!/bin/sh\necho hi\n", { mode: 0o755 });
     process.env.PATH = `${tmpDir}${path.delimiter}/nonexistent`;
 
@@ -38,23 +46,20 @@ describe("resolveBin", () => {
 
   it("ignores empty PATH segments", () => {
     process.env.PATH = `${path.delimiter}${path.delimiter}${tmpDir}`;
-    const target = path.join(tmpDir, "panopticon");
+    const target = path.join(tmpDir, BIN_NAME);
     fs.writeFileSync(target, "x", { mode: 0o755 });
     expect(resolveBin("panopticon")).toBe(target);
   });
 
   // The Windows code path probes PATHEXT extensions. We can't change
   // process.platform mid-test, so only run the assertion on Windows.
-  it.runIf(process.platform === "win32")(
-    "probes PATHEXT extensions on Windows",
-    () => {
-      const target = path.join(tmpDir, "panopticon.cmd");
-      fs.writeFileSync(target, "@echo off\r\necho hi\r\n");
-      process.env.PATH = tmpDir;
-      process.env.PATHEXT = ".COM;.EXE;.BAT;.CMD";
-      expect(resolveBin("panopticon")).toBe(target);
-    },
-  );
+  it.runIf(IS_WIN)("probes PATHEXT extensions on Windows", () => {
+    const target = path.join(tmpDir, "panopticon.cmd");
+    fs.writeFileSync(target, "@echo off\r\necho hi\r\n");
+    process.env.PATH = tmpDir;
+    process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+    expect(resolveBin("panopticon")).toBe(target);
+  });
 });
 
 describe("quoteWinArg", () => {
