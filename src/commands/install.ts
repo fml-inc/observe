@@ -1,10 +1,10 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { addTarget, listTargets } from "@fml-inc/panopticon/sync";
 import { printBanner } from "../banner.js";
+import { execBinSync, resolveBin } from "../bin-utils.js";
 import {
   DEFAULT_SYNC_URL,
   DEFAULT_TARGET_NAME,
@@ -69,18 +69,22 @@ export async function handleInstall(): Promise<void> {
         ? "      Upgrading @fml-inc/panopticon..."
         : "      Installing @fml-inc/panopticon globally...",
     );
-    try {
-      execFileSync("npm", ["install", "-g", "@fml-inc/panopticon@latest"], {
-        encoding: "utf-8",
-        timeout: 120_000,
-        stdio: "pipe",
-      });
-      freshInstall = true;
-      console.log("      Installed @fml-inc/panopticon");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`      Failed to install panopticon: ${msg}`);
+    const npmBin = resolveBin("npm");
+    if (!npmBin) {
+      console.error("      Failed to install panopticon: npm not found on PATH");
       console.error("      Install manually: npm install -g @fml-inc/panopticon@latest");
+    } else {
+      try {
+        execBinSync(npmBin, ["install", "-g", "@fml-inc/panopticon@latest"], {
+          timeout: 120_000,
+        });
+        freshInstall = true;
+        console.log("      Installed @fml-inc/panopticon");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`      Failed to install panopticon: ${msg}`);
+        console.error("      Install manually: npm install -g @fml-inc/panopticon@latest");
+      }
     }
   }
   // npm postinstall already ran panopticon install for fresh installs;
@@ -180,21 +184,24 @@ export async function handleInstall(): Promise<void> {
   console.log(`      Claude settings: ${CLAUDE_SETTINGS_PATH}`);
 
   // Register plugin with Claude Code (install if new, update if existing)
-  try {
-    try {
-      execFileSync("claude", ["plugin", "install", "fml@local-plugins"], {
-        stdio: "pipe",
-        timeout: 15_000,
-      });
-    } catch {
-      execFileSync("claude", ["plugin", "update", "fml@local-plugins"], {
-        stdio: "pipe",
-        timeout: 15_000,
-      });
-    }
-    console.log("      Plugin registered via Claude Code CLI");
-  } catch {
+  const claudeBin = resolveBin("claude");
+  if (!claudeBin) {
     console.log("      warn: claude CLI not found, run 'claude plugin install fml@local-plugins' manually");
+  } else {
+    try {
+      try {
+        execBinSync(claudeBin, ["plugin", "install", "fml@local-plugins"], {
+          timeout: 15_000,
+        });
+      } catch {
+        execBinSync(claudeBin, ["plugin", "update", "fml@local-plugins"], {
+          timeout: 15_000,
+        });
+      }
+      console.log("      Plugin registered via Claude Code CLI");
+    } catch {
+      console.log("      warn: claude CLI not found, run 'claude plugin install fml@local-plugins' manually");
+    }
   }
   console.log();
 
