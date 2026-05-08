@@ -22,6 +22,7 @@
   "files": [
     "bin/",
     "dist/",
+    "scripts/postinstall.cjs",
     ".claude-plugin/"
   ],
   "scripts": {
@@ -29,7 +30,7 @@
     "dev": "tsup --watch",
     "prepack": "node scripts/generate-plugin-manifest.js",
     "pack:local": "pnpm build && pnpm pack",
-    "postinstall": "[ ! -d dist ] || (node ./dist/postinstall.js && (claude plugin install fml@local-plugins 2>/dev/null || claude plugin update fml@local-plugins || echo 'warn: claude CLI not found, run claude plugin install fml@local-plugins manually'))",
+    "postinstall": "node scripts/postinstall.cjs",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

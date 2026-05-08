@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execBinSync, resolveBin } from "../bin-utils.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
 
@@ -47,20 +47,20 @@ export function handleUninstall(opts: {
   } else {
     console.log("[1/5] Uninstalling MCP plugin...");
     // Uninstall from user scope via CLI
-    try {
-      execFileSync(
-        "claude",
-        ["plugin", "uninstall", "fml@local-plugins", "--scope", "user"],
-        { stdio: "pipe", timeout: 10_000 },
-      );
-      console.log("      Uninstalled (user scope)");
-    } catch {
-      // Not installed at this scope, or claude CLI not found
+    const claudeBin = resolveBin("claude");
+    if (claudeBin) {
+      try {
+        execBinSync(
+          claudeBin,
+          ["plugin", "uninstall", "fml@local-plugins", "--scope", "user"],
+          { timeout: 10_000 },
+        );
+        console.log("      Uninstalled (user scope)");
+      } catch {
+        // Not installed at this scope
+      }
     }
 
-    // Clean all scopes from installed_plugins.json directly — the CLI
-    // can only remove project-scoped entries from within that project dir,
-    // so we handle it ourselves.
     // Clean all scopes from installed_plugins.json directly — the CLI
     // can only remove project-scoped entries from within that project dir,
     // so we handle it ourselves.
