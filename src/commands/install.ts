@@ -238,8 +238,25 @@ export async function handleInstall(): Promise<void> {
   console.log("");
   printBanner();
   console.log("Done! Start a new coding session to activate.\n");
-  console.log("\nNext steps:");
-  console.log("  fml login          Sign in to your FML account");
+
+  // 6. Auto-login when no token is present and we're attached to a TTY.
+  //    Non-interactive contexts (CI, postinstall without a terminal) fall
+  //    through to the manual instructions below. FML_NO_AUTO_LOGIN=1 is an
+  //    explicit opt-out for image builds and provisioning scripts that may
+  //    happen to land on a TTY.
+  const { readTokens } = await import("../auth/token-store.js");
+  const hasToken = !!readTokens() || !!process.env.FML_TOKEN;
+  const skipAutoLogin = process.env.FML_NO_AUTO_LOGIN === "1";
+  if (!hasToken && process.stdin.isTTY && !skipAutoLogin) {
+    const { handleLogin } = await import("./login.js");
+    await handleLogin();
+    return;
+  }
+
+  console.log("Next steps:");
+  if (!hasToken) {
+    console.log("  fml login          Sign in to your FML account");
+  }
   console.log("  fml org            Select organization");
   console.log("  fml sync status    Check sync status");
   console.log("  fml status         Verify setup");

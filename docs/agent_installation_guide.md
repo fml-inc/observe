@@ -40,10 +40,12 @@ Installs the CLI binary. After this command, the `fml` binary is on `$PATH`. If 
 
 Registers the plugin, skills, and hooks into whichever coding-agent CLIs are present (Claude Code, Codex, Gemini, Claude Desktop) and starts the local panopticon daemon on `127.0.0.1:4318`.
 
+When run from an interactive human terminal, `fml install` chains directly into `fml login` once setup finishes. Sandboxes don't have a TTY on stdin, so install exits without trying to log you in — you need the explicit `fml login --device` step below.
+
 Expected behavior in a sandbox:
 
 - Step 5 ("Configuring sync target") prints `Auth: not configured — run fml login to enable sync.` **This is normal and expected when `gh` is not installed.** Do not try to install `gh` or run `fml sync setup`; the next step will configure sync for you.
-- The banner prints `Done! Start a new coding session to activate.`
+- The banner prints `Done! Start a new coding session to activate.` followed by `Next steps:` that includes `fml login`.
 
 Do not restart your own session — you cannot. Subsequent steps work regardless.
 

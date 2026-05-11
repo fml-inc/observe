@@ -14,9 +14,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fmlBin = join(__dirname, "..", "bin", "fml");
 
 try {
+  // No timeout: install now auto-runs `fml login` when stdin is a TTY,
+  // and the device-flow poll can legitimately block for several minutes
+  // waiting on a confirmation code.
   execFileSync(process.execPath, [fmlBin, "install"], {
     stdio: "inherit",
-    timeout: 120_000,
   });
 } catch {
   // fml install failed — not fatal for postinstall
