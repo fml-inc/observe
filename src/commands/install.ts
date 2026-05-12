@@ -51,11 +51,11 @@ export async function handleInstall(): Promise<void> {
   console.log("[1/5] Setting up panopticon...");
   const { resolvePanopticonBin } = await import("../daemon-utils.js");
   let freshInstall = false;
+  const MIN_PANOPTICON = "0.2.2";
   const bin = resolvePanopticonBin();
   let needsInstall = !bin;
   if (bin) {
-    // Check version — upgrade if below the minimum required by this build
-    const MIN_PANOPTICON = "0.2.2";
+    // Check version — require explicit upgrade if below the minimum required by this build
     const vResult = panopticonExec("--version", { timeout: 5_000 });
     const installed = vResult.ok ? vResult.stdout.trim().split("+")[0] : "0.0.0";
     if (installed < MIN_PANOPTICON) {
@@ -64,31 +64,21 @@ export async function handleInstall(): Promise<void> {
     }
   }
   if (needsInstall) {
-    console.log(
+    console.error(
       bin
-        ? "      Upgrading @fml-inc/panopticon..."
-        : "      Installing @fml-inc/panopticon globally...",
+        ? `      Found panopticon below the required version (${MIN_PANOPTICON}).`
+        : "      panopticon was not found on PATH.",
     );
-    const npmBin = resolveBin("npm");
-    if (!npmBin) {
-      console.error("      Failed to install panopticon: npm not found on PATH");
-      console.error("      Install manually: npm install -g @fml-inc/panopticon@latest");
-    } else {
-      try {
-        execBinSync(npmBin, ["install", "-g", "@fml-inc/panopticon@latest"], {
-          timeout: 120_000,
-        });
-        freshInstall = true;
-        console.log("      Installed @fml-inc/panopticon");
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`      Failed to install panopticon: ${msg}`);
-        console.error("      Install manually: npm install -g @fml-inc/panopticon@latest");
-      }
-    }
+    console.error(
+      "      Automatic global npm installs are disabled for supply-chain safety.",
+    );
+    console.error(
+      "      Install or upgrade explicitly, then rerun `fml install`: npm install -g @fml-inc/panopticon",
+    );
+    freshInstall = true;
   }
-  // npm postinstall already ran panopticon install for fresh installs;
-  // only re-run for existing installs to pick up config changes.
+  // Do not install or upgrade global npm packages from this setup command.
+  // If panopticon is already present, run its installer to pick up config changes.
   if (!freshInstall) {
     const result = panopticonExec("install", { timeout: 60_000 });
     if (result.ok) {
