@@ -15,11 +15,37 @@ if (!fs.existsSync(distEntry)) {
   process.exit(0);
 }
 
+// npm runs lifecycle scripts with *piped* stdio by default — the output is
+// captured and replayed after the script finishes. That hides our install
+// logs and, worse, makes `process.stdin.isTTY` false inside `fml install`,
+// so the auto-login branch never fires even when the user is sitting at a
+// real terminal.
+//
+// Open /dev/tty directly and hand it to the child so `fml install` sees a
+// TTY and can prompt. Falls back to stdio:"inherit" on platforms or
+// environments where /dev/tty isn't available (Windows, CI, docker build,
+// detached processes — auto-login is correctly skipped in all of those).
+//
+// No timeout: a real-terminal install will sit on the device-flow prompt
+// until the user pastes the code, which can take longer than any sane
+// fixed timeout.
+let stdio = "inherit";
+let ttyFd;
 try {
-  execFileSync(process.execPath, [distEntry], {
-    stdio: "inherit",
-    timeout: 120_000,
-  });
+  ttyFd = fs.openSync("/dev/tty", "r+");
+  stdio = [ttyFd, ttyFd, ttyFd];
+} catch {
+  // /dev/tty unavailable — keep stdio:"inherit"
+}
+
+try {
+  execFileSync(process.execPath, [distEntry], { stdio });
 } catch {
   // Best-effort: never fail install over a postinstall hook.
+} finally {
+  if (ttyFd !== undefined) {
+    try {
+      fs.closeSync(ttyFd);
+    } catch {}
+  }
 }
