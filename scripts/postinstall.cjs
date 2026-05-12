@@ -13,6 +13,7 @@ if (process.env.FML_ENABLE_POSTINSTALL !== "1") {
   // Supply-chain hardening: npm lifecycle scripts should not perform setup,
   // mutate user config, start daemons, or prompt unless explicitly opted in.
   // Run `fml install` after installation to configure the CLI.
+  process.stderr.write("fml installed. Run `fml install` to finish setup.\n");
   process.exit(0);
 }
 

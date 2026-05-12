@@ -17,15 +17,20 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
 
+      # NB: --ignore-scripts is deliberately omitted here even though CD
+      # uses it. CI runs `pnpm test`, which loads better-sqlite3 — that
+      # native module needs its install script to fetch prebuilds. CD only
+      # type-checks, builds, and packs (no runtime load of better-sqlite3),
+      # so it can safely opt out of dep install scripts.
       - run: pnpm install --frozen-lockfile
 
       - name: Type check

@@ -47,15 +47,18 @@ export async function handleInstall(): Promise<void> {
   const pluginRoot = getPluginRoot();
   console.log("Installing fml...\n");
 
-  // 1. Ensure panopticon is installed globally and up to date
+  // 1. Ensure panopticon is installed globally and up to date.
+  //
+  // `fml install` is an explicit, user-initiated command — invoking npm to
+  // install our known dependency here is fine. The supply-chain gate we
+  // care about is the implicit-execution-on-`npm install` vector, not a
+  // CLI the user just ran themselves.
   console.log("[1/5] Setting up panopticon...");
   const { resolvePanopticonBin } = await import("../daemon-utils.js");
-  let freshInstall = false;
   const MIN_PANOPTICON = "0.2.2";
-  const bin = resolvePanopticonBin();
+  let bin = resolvePanopticonBin();
   let needsInstall = !bin;
   if (bin) {
-    // Check version — require explicit upgrade if below the minimum required by this build
     const vResult = panopticonExec("--version", { timeout: 5_000 });
     const installed = vResult.ok ? vResult.stdout.trim().split("+")[0] : "0.0.0";
     if (installed < MIN_PANOPTICON) {
@@ -64,32 +67,47 @@ export async function handleInstall(): Promise<void> {
     }
   }
   if (needsInstall) {
-    console.error(
+    console.log(
       bin
-        ? `      Found panopticon below the required version (${MIN_PANOPTICON}).`
-        : "      panopticon was not found on PATH.",
+        ? "      Upgrading @fml-inc/panopticon..."
+        : "      Installing @fml-inc/panopticon globally...",
     );
-    console.error(
-      "      Automatic global npm installs are disabled for supply-chain safety.",
-    );
-    console.error(
-      "      Install or upgrade explicitly, then rerun `fml install`: npm install -g @fml-inc/panopticon",
-    );
-    freshInstall = true;
+    const npmBin = resolveBin("npm");
+    if (!npmBin) {
+      console.error("      npm not found on PATH.");
+      console.error("      Install panopticon manually: npm install -g @fml-inc/panopticon");
+      process.exit(1);
+    }
+    try {
+      execBinSync(npmBin, ["install", "-g", "@fml-inc/panopticon@latest"], {
+        timeout: 120_000,
+      });
+      console.log("      Installed @fml-inc/panopticon");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`      Failed to install panopticon: ${msg}`);
+      console.error("      Install manually: npm install -g @fml-inc/panopticon");
+      process.exit(1);
+    }
+    bin = resolvePanopticonBin();
+    if (!bin) {
+      console.error("      panopticon binary not found on PATH after install.");
+      console.error("      Check that npm's global bin directory is on $PATH.");
+      process.exit(1);
+    }
   }
-  // Do not install or upgrade global npm packages from this setup command.
-  // If panopticon is already present, run its installer to pick up config changes.
-  if (!freshInstall) {
-    const result = panopticonExec("install", { timeout: 60_000 });
-    if (result.ok) {
-      for (const line of result.stdout.trim().split("\n")) {
-        console.log(`      ${line}`);
-      }
-    } else {
-      console.error("      panopticon install failed:");
-      for (const line of result.stdout.trim().split("\n")) {
-        console.error(`      ${line}`);
-      }
+  // panopticon's own npm postinstall is gated for supply-chain safety, so
+  // it does not configure itself on install. Always re-exec `panopticon
+  // install` here — covers cold setup and refreshes config on upgrades.
+  const result = panopticonExec("install", { timeout: 60_000 });
+  if (result.ok) {
+    for (const line of result.stdout.trim().split("\n")) {
+      console.log(`      ${line}`);
+    }
+  } else {
+    console.error("      panopticon install failed:");
+    for (const line of result.stdout.trim().split("\n")) {
+      console.error(`      ${line}`);
     }
   }
   console.log();
