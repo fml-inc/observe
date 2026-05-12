@@ -9,14 +9,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
-if (process.env.FML_ENABLE_POSTINSTALL !== "1") {
-  // Supply-chain hardening: npm lifecycle scripts should not perform setup,
-  // mutate user config, start daemons, or prompt unless explicitly opted in.
-  // Run `fml install` after installation to configure the CLI.
-  process.stderr.write("fml installed. Run `fml install` to finish setup.\n");
-  process.exit(0);
-}
-
 const distEntry = path.resolve(__dirname, "..", "dist", "postinstall.js");
 if (!fs.existsSync(distEntry)) {
   // Source repo before first build — nothing to do.

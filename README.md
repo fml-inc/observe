@@ -5,10 +5,10 @@ Agent tools for AI coding assistants. Installs as a [Claude Code plugin](https:/
 ## Install
 
 ```bash
-npm install -g @fml-inc/fml && fml install
+npm install -g @fml-inc/fml
 ```
 
-This installs the CLI, registers the plugin, hooks, and MCP tools in Claude Code, and bootstraps Panopticon for local data collection. Start a new session to activate.
+This installs the plugin, registers hooks and MCP tools in Claude Code, and bootstraps Panopticon for local data collection. Start a new session to activate.
 
 Then sign in:
 
@@ -102,7 +102,8 @@ To test the full install flow:
 
 ```bash
 pnpm build && pnpm pack
-npm install -g ./fml-inc-fml-*.tgz && fml install
+npm install -g ./fml-inc-fml-*.tgz
+fml install
 ```
 
 ## License
