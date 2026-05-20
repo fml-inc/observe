@@ -5,7 +5,12 @@ import {
   getValidToken,
   readTokens,
 } from "../auth/token-store.js";
-import { createApiClient, getAuthenticatedClient } from "../convex-client.js";
+import {
+  createApiClient,
+  getAuthenticatedClient,
+  type ToolResult,
+} from "../convex-client.js";
+import { resolveRepoFromCwd } from "@fml-inc/panopticon/repo";
 import { Sentry } from "../sentry.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -632,6 +637,133 @@ export function registerTools(server: McpServer): void {
           `Error: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
+    },
+  );
+
+  // ── Anamnesis ground-truth context ──────────────────────────────────────
+  // Factual git/GitHub history for the current repo (which PRs touched a file,
+  // what a commit/PR did, etc.), served from the anamnesis corpus.
+
+  const resolveRepoArg = (repo?: string): string | null => {
+    if (repo) return repo;
+    try {
+      return resolveRepoFromCwd(process.cwd())?.repo ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const anamnesisResult = (result: ToolResult) =>
+    result.ok
+      ? textResult(result.result)
+      : errorResult(result.error ?? "Unknown error");
+
+  server.tool(
+    "fml_path_history",
+    "Ground-truth history for a file path: PRs that touched it and review comments on it (newest first). USE FOR: understanding why a file looks the way it does, who changed it, related PRs.",
+    {
+      path: z.string().describe("Repo-relative file path, e.g. 'src/app.ts'."),
+      repo: z
+        .string()
+        .optional()
+        .describe("owner/repo. Defaults to the current working repo."),
+      limit: z.number().optional().describe("Max items per list (default 25)."),
+    },
+    async (args) => {
+      const repo = resolveRepoArg(args.repo);
+      if (!repo)
+        return errorResult(
+          "Could not determine repo — pass `repo` (owner/repo).",
+        );
+      const api = await getAuthenticatedClient();
+      if (!api) return errorResult("Not authenticated. Run `fml login`.");
+      return anamnesisResult(
+        await api.anamnesisContext("path", {
+          repo,
+          path: args.path,
+          limit: args.limit,
+        }),
+      );
+    },
+  );
+
+  server.tool(
+    "fml_commit_context",
+    "Ground-truth context for a commit sha: the PR(s) that contain or merged it, and any revert relationships. Accepts abbreviated shas.",
+    {
+      sha: z.string().describe("Commit sha (full or abbreviated)."),
+      repo: z
+        .string()
+        .optional()
+        .describe("owner/repo. Defaults to the current working repo."),
+    },
+    async (args) => {
+      const repo = resolveRepoArg(args.repo);
+      if (!repo)
+        return errorResult(
+          "Could not determine repo — pass `repo` (owner/repo).",
+        );
+      const api = await getAuthenticatedClient();
+      if (!api) return errorResult("Not authenticated. Run `fml login`.");
+      return anamnesisResult(
+        await api.anamnesisContext("commit", { repo, sha: args.sha }),
+      );
+    },
+  );
+
+  server.tool(
+    "fml_pr_context",
+    "Full ground-truth view of a pull request: metadata, commits, changed files, review comments, and derived facts.",
+    {
+      number: z.number().describe("PR number."),
+      repo: z
+        .string()
+        .optional()
+        .describe("owner/repo. Defaults to the current working repo."),
+      limit: z.number().optional().describe("Max items per list (default 25)."),
+    },
+    async (args) => {
+      const repo = resolveRepoArg(args.repo);
+      if (!repo)
+        return errorResult(
+          "Could not determine repo — pass `repo` (owner/repo).",
+        );
+      const api = await getAuthenticatedClient();
+      if (!api) return errorResult("Not authenticated. Run `fml login`.");
+      return anamnesisResult(
+        await api.anamnesisContext("pr", {
+          repo,
+          number: args.number,
+          limit: args.limit,
+        }),
+      );
+    },
+  );
+
+  server.tool(
+    "fml_anamnesis_query",
+    "Generic query over the anamnesis fact corpus. Filter by predicate (pr_touches_path, pr_contains_commit, pr_merged_as_commit, review_comment_on_path, commit_reverts_commit, pr_reverts_pr) and/or subject/object.",
+    {
+      predicate: z.string().optional().describe("Fact predicate to filter by."),
+      subjectKind: z.string().optional(),
+      subjectValue: z.string().optional(),
+      objectKind: z.string().optional(),
+      objectValue: z.string().optional(),
+      repo: z
+        .string()
+        .optional()
+        .describe("owner/repo. Defaults to the current working repo."),
+      limit: z.number().optional().describe("Max facts (default 25)."),
+    },
+    async (args) => {
+      const repo = resolveRepoArg(args.repo);
+      if (!repo)
+        return errorResult(
+          "Could not determine repo — pass `repo` (owner/repo).",
+        );
+      const api = await getAuthenticatedClient();
+      if (!api) return errorResult("Not authenticated. Run `fml login`.");
+      return anamnesisResult(await api.anamnesisQuery({ ...args, repo }));
     },
   );
 }
