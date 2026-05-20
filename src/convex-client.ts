@@ -101,6 +101,36 @@ export function createApiClient(token: string) {
     );
   }
 
+  /** Authed fetch to a fml-be HTTP action, parsing the JSON envelope. */
+  async function fetchContext(
+    pathAndQuery: string,
+    init: RequestInit,
+  ): Promise<ToolResult> {
+    try {
+      const res = await fetch(`${getSiteUrl()}${pathAndQuery}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+        },
+      });
+      const text = await res.text();
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` };
+      }
+      if (!res.ok) {
+        const err = (data as { error?: string }).error;
+        return { ok: false, error: err ?? `HTTP ${res.status}` };
+      }
+      return { ok: true, result: data };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   return {
     // ── Orgs ──────────────────────────────────────────────────────────────
 
@@ -222,6 +252,48 @@ export function createApiClient(token: string) {
         }
         throw err;
       }
+    },
+
+    // ── Anamnesis ground-truth context ───────────────────────────────────
+
+    /**
+     * Call a read-only anamnesis context endpoint
+     * (/v1/anamnesis/context/{path,commit,pr}). Requires a service token —
+     * the endpoint only accepts `fml_st_` bearers.
+     */
+    async anamnesisContext(
+      kind: "path" | "commit" | "pr",
+      params: Record<string, string | number | undefined>,
+    ): Promise<ToolResult> {
+      if (!isServiceToken) {
+        return {
+          ok: false,
+          error:
+            "Anamnesis context requires a service token. Run `fml login` on a machine/CI with a service token (fml_st_…).",
+        };
+      }
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v != null) qs.set(k, String(v));
+      }
+      return fetchContext(`/v1/anamnesis/context/${kind}?${qs.toString()}`, {
+        method: "GET",
+      });
+    },
+
+    /** POST /v1/anamnesis/context/query — generic predicate query. */
+    async anamnesisQuery(body: Record<string, unknown>): Promise<ToolResult> {
+      if (!isServiceToken) {
+        return {
+          ok: false,
+          error:
+            "Anamnesis context requires a service token. Run `fml login` on a machine/CI with a service token (fml_st_…).",
+        };
+      }
+      return fetchContext("/v1/anamnesis/context/query", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
     },
 
     // ── Repo resolution ──────────────────────────────────────────────────
