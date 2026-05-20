@@ -258,20 +258,13 @@ export function createApiClient(token: string) {
 
     /**
      * Call a read-only anamnesis context endpoint
-     * (/v1/anamnesis/context/{path,commit,pr}). Requires a service token —
-     * the endpoint only accepts `fml_st_` bearers.
+     * (/v1/anamnesis/context/{path,commit,pr}). Sends the current token
+     * (service token or user JWT) — the endpoint accepts either.
      */
     async anamnesisContext(
       kind: "path" | "commit" | "pr",
       params: Record<string, string | number | undefined>,
     ): Promise<ToolResult> {
-      if (!isServiceToken) {
-        return {
-          ok: false,
-          error:
-            "Anamnesis context requires a service token. Run `fml login` on a machine/CI with a service token (fml_st_…).",
-        };
-      }
       const qs = new URLSearchParams();
       for (const [k, v] of Object.entries(params)) {
         if (v != null) qs.set(k, String(v));
@@ -283,13 +276,6 @@ export function createApiClient(token: string) {
 
     /** POST /v1/anamnesis/context/query — generic predicate query. */
     async anamnesisQuery(body: Record<string, unknown>): Promise<ToolResult> {
-      if (!isServiceToken) {
-        return {
-          ok: false,
-          error:
-            "Anamnesis context requires a service token. Run `fml login` on a machine/CI with a service token (fml_st_…).",
-        };
-      }
       return fetchContext("/v1/anamnesis/context/query", {
         method: "POST",
         body: JSON.stringify(body),
