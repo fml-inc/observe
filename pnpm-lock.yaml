@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@fml-inc/panopticon':
-        specifier: ^0.2.14
-        version: 0.2.14
+        specifier: ^0.2.16
+        version: 0.2.16
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.29.0(zod@3.25.76)
@@ -387,8 +387,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fml-inc/panopticon@0.2.14':
-    resolution: {integrity: sha512-qKcwpm8yDPcxfZh30UPQ7M0d8ijjZeae8MOHYEqqgBBgWYIEzVj2KrZUBjDqQwTF3DI6UnvuRGOpICax5fpwRg==}
+  '@fml-inc/panopticon@0.2.16':
+    resolution: {integrity: sha512-c4mzr+k6SPv9+8uuJkVqV31gZhi5s+GeP33z8NL9T0cMWJoOxl4Qe/61hiQNdNO7sdL9SuSx264iApNJvhTOcA==}
     engines: {node: '>=24.0.0'}
     hasBin: true
 
@@ -1963,7 +1963,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
-  '@fml-inc/panopticon@0.2.14':
+  '@fml-inc/panopticon@0.2.16':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
       commander: 14.0.3
