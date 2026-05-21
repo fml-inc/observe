@@ -1,15 +1,27 @@
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const CLI_PATH = path.resolve(__dirname, "../../dist/cli.js");
+
+// Isolate the CLI's data/log dirs so integration tests — notably `logout`,
+// which deletes the auth token — operate on a throwaway dir and can NEVER
+// touch the real ~/Library/Application Support/fml/auth.<env>.json.
+const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "fml-cli-test-"));
 
 function run(...args: string[]): { stdout: string; exitCode: number } {
   try {
     const stdout = execFileSync("node", [CLI_PATH, ...args], {
       encoding: "utf-8",
       timeout: 10_000,
-      env: { ...process.env, NODE_NO_WARNINGS: "1" },
+      env: {
+        ...process.env,
+        NODE_NO_WARNINGS: "1",
+        FML_DATA_DIR: TEST_DATA_DIR,
+        FML_LOG_DIR: TEST_DATA_DIR,
+      },
     });
     return { stdout, exitCode: 0 };
   } catch (err: unknown) {
@@ -33,8 +45,7 @@ describe("CLI integration", () => {
       expect(stdout).toContain("status");
       expect(stdout).toContain("doctor");
       expect(stdout).toContain("open");
-      expect(stdout).toContain("start");
-      expect(stdout).toContain("stop");
+      expect(stdout).toContain("panopticon");
       expect(stdout).toContain("sync");
     });
 

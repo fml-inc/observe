@@ -36,28 +36,22 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fml-inc/panopticon": "^0.2.14",
+    "@fml-inc/panopticon": "^0.2.16",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "better-sqlite3": "^11.0.0",
     "commander": "^13.1.0",
     "convex": "^1.21.0",
-    "debug": "^4.4.0",
     "open": "^10.1.0",
     "ora": "^8.2.0",
     "picocolors": "^1.1.1",
-    "protobufjs": "^7.0.0",
-    "smol-toml": "^1.3.0",
     "zod": "^3.23.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3",
       "esbuild"
     ]
   },
   "devDependencies": {
     "@sentry/core": "^10.43.0",
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^24.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5",

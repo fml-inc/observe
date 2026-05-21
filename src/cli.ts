@@ -2,9 +2,6 @@
 
 declare const __FML_PLUGIN_VERSION__: string;
 
-import { ensureNativeModules } from "./native-check.js";
-ensureNativeModules();
-
 import { Command } from "commander";
 import { initSentry, Sentry } from "./sentry.js";
 
@@ -17,7 +14,12 @@ import { handleLogout } from "./commands/logout.js";
 import { handleOrg } from "./commands/org.js";
 import { handleOpen } from "./commands/open.js";
 import { handleStatus } from "./commands/status.js";
-import { handleStart, handleStop } from "./commands/daemon.js";
+import {
+  handleStart,
+  handleStop,
+  handleSyncStart,
+  handleSyncStop,
+} from "./commands/daemon.js";
 import {
   handleSyncAdd,
   handleSyncEdit,
@@ -153,7 +155,11 @@ tools
 program
   .command("install")
   .description("Register plugin, hooks, and daemons")
-  .action(() => handleInstall());
+  .option(
+    "--force",
+    "Reinstall even if already set up (upgrades panopticon, re-registers plugin)",
+  )
+  .action((opts) => handleInstall(opts));
 
 program
   .command("uninstall")
@@ -213,19 +219,35 @@ program
     else handleEnvShow();
   });
 
-program
+// ── Panopticon server lifecycle ─────────────────────────────────────────────
+
+const panopticon = program
+  .command("panopticon")
+  .description("Start or stop the panopticon server");
+
+panopticon
   .command("start")
-  .description("Start panopticon server and sync")
+  .description("Start the panopticon server")
   .action(() => handleStart());
 
-program
+panopticon
   .command("stop")
-  .description("Stop panopticon server and sync")
+  .description("Stop the panopticon server")
   .action(() => handleStop());
 
 // ── Sync subcommand ───────────────────────────────────────────────────────
 
 const sync = program.command("sync").description("Manage sync configuration");
+
+sync
+  .command("start")
+  .description("Start syncing to configured targets (enable sync)")
+  .action(() => handleSyncStart());
+
+sync
+  .command("stop")
+  .description("Stop syncing (disable sync; leaves targets configured)")
+  .action(() => handleSyncStop());
 
 sync
   .command("setup")

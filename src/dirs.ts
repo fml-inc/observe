@@ -12,6 +12,9 @@ import path from "node:path";
 const home = os.homedir();
 
 function dataDir(): string {
+  // Override (tests, eval replays, sandboxes) so they never touch a real
+  // user's auth/config in the platform-default location.
+  if (process.env.FML_DATA_DIR) return process.env.FML_DATA_DIR;
   switch (process.platform) {
     case "darwin":
       return path.join(home, "Library", "Application Support", "fml");
@@ -29,6 +32,7 @@ function dataDir(): string {
 }
 
 function logDir(): string {
+  if (process.env.FML_LOG_DIR) return process.env.FML_LOG_DIR;
   switch (process.platform) {
     case "darwin":
       return path.join(home, "Library", "Logs", "fml");
@@ -47,7 +51,7 @@ function logDir(): string {
   }
 }
 
-/** Runtime data — SQLite DBs, PID files, config, auth tokens */
+/** Runtime data — auth tokens, env config, PID files */
 export const FML_DATA_DIR = dataDir();
 
 /** Log files — daemon logs, MCP logs */

@@ -45,6 +45,11 @@ export function writeEnvConfig(config: EnvConfig): void {
   });
 }
 
+/** Whether an env selection has already been persisted (not a fresh install). */
+export function envConfigExists(): boolean {
+  return fs.existsSync(ENV_CONFIG_PATH);
+}
+
 /**
  * Look up a panopticon sync target by name and return its Convex deployment
  * URL (`.convex.cloud`). Returns null if panopticon isn't installed or the

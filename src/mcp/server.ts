@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import { ensureNativeModules } from "../native-check.js";
-ensureNativeModules();
-
 import fs from "node:fs";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

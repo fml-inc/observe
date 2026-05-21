@@ -114,35 +114,54 @@ describe("createApiClient.listTools — service token path", () => {
   });
 });
 
-describe("createApiClient.listTools — JWT path", () => {
+describe("createApiClient.listTools — JWT path (also routes through HTTP)", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchSpy = vi.spyOn(globalThis, "fetch");
   });
 
-  it("calls Convex query with pluginVersion when supplied", async () => {
-    mockConvexQuery.mockResolvedValue(DESCRIPTORS);
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("calls GET /api/tools/list with the JWT bearer (not client.query)", async () => {
+    fetchSpy.mockResolvedValue({
+      text: async () =>
+        JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
+    } as Response);
 
     const api = createApiClient(JWT_TOKEN);
     const result = await api.listTools("2.0.0");
 
-    expect(mockConvexQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      { pluginVersion: "2.0.0" },
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${SITE_URL}/api/tools/list?pluginVersion=2.0.0`);
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      `Bearer ${JWT_TOKEN}`,
     );
     expect(result).toEqual(DESCRIPTORS);
+    expect(mockConvexQuery).not.toHaveBeenCalled();
   });
 
-  it("calls Convex query with empty args when pluginVersion omitted", async () => {
-    mockConvexQuery.mockResolvedValue(DESCRIPTORS);
+  it("omits pluginVersion param when not provided", async () => {
+    fetchSpy.mockResolvedValue({
+      text: async () =>
+        JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
+    } as Response);
 
     const api = createApiClient(JWT_TOKEN);
     await api.listTools();
 
-    expect(mockConvexQuery).toHaveBeenCalledWith(expect.anything(), {});
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${SITE_URL}/api/tools/list`);
   });
 
   it("throws auth error translated to login message on Unauthorized", async () => {
-    mockConvexQuery.mockRejectedValue(new Error("Unauthorized"));
+    fetchSpy.mockResolvedValue({
+      text: async () => JSON.stringify({ ok: false, error: "Unauthorized" }),
+    } as Response);
 
     const api = createApiClient(JWT_TOKEN);
     await expect(api.listTools()).rejects.toThrow("fml login");
