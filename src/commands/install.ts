@@ -8,6 +8,7 @@ import { execBinSync, resolveBin } from "../bin-utils.js";
 import {
   DEFAULT_SYNC_URL,
   DEFAULT_TARGET_NAME,
+  envConfigExists,
   writeEnvConfig,
 } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
@@ -236,8 +237,13 @@ export async function handleInstall(
     }
   }
 
-  // Set active env to the default sync target
-  writeEnvConfig({ active: DEFAULT_TARGET_NAME });
+  // Set the active env to the default only on a fresh install. `fml install`
+  // runs on every `npm install -g` (postinstall), so clobbering this on each
+  // run would reset the env pointer and orphan the user's per-env login token
+  // (tokens are stored per env at auth.<env>.json).
+  if (!envConfigExists()) {
+    writeEnvConfig({ active: DEFAULT_TARGET_NAME });
+  }
 
   console.log("");
   printBanner();
