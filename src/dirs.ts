@@ -47,7 +47,7 @@ function logDir(): string {
   }
 }
 
-/** Runtime data — SQLite DBs, PID files, config, auth tokens */
+/** Runtime data — auth tokens, env config, PID files */
 export const FML_DATA_DIR = dataDir();
 
 /** Log files — daemon logs, MCP logs */

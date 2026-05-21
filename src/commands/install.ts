@@ -43,17 +43,21 @@ function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
 }
 
-export async function handleInstall(): Promise<void> {
+export async function handleInstall(
+  opts: { force?: boolean } = {},
+): Promise<void> {
+  const force = opts.force ?? false;
   const pluginRoot = getPluginRoot();
-  console.log("Installing fml...\n");
+  console.log(`Installing fml${force ? " (--force)" : ""}...\n`);
 
   // 1. Ensure panopticon is installed globally and up to date
   console.log("[1/5] Setting up panopticon...");
   const { resolvePanopticonBin } = await import("../daemon-utils.js");
   let freshInstall = false;
   const bin = resolvePanopticonBin();
-  let needsInstall = !bin;
-  if (bin) {
+  // --force always reinstalls panopticon to pick up the latest build.
+  let needsInstall = !bin || force;
+  if (bin && !force) {
     // Check version — upgrade if below the minimum required by this build
     const MIN_PANOPTICON = "0.2.2";
     const vResult = panopticonExec("--version", { timeout: 5_000 });

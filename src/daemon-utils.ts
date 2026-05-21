@@ -1,24 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
 import { execBinSync, resolveBin } from "./bin-utils.js";
-import { FML_DATA_DIR, FML_LOG_DIR } from "./dirs.js";
-
-export const SYNC_PID_FILE = path.join(FML_DATA_DIR, "sync.pid");
-export const SYNC_LOG_FILE = path.join(FML_LOG_DIR, "sync.log");
-
-export function isDaemonRunning(pidFile: string): {
-  running: boolean;
-  pid: number | null;
-} {
-  if (!fs.existsSync(pidFile)) return { running: false, pid: null };
-  const pid = parseInt(fs.readFileSync(pidFile, "utf-8").trim(), 10);
-  try {
-    process.kill(pid, 0);
-    return { running: true, pid };
-  } catch {
-    return { running: false, pid };
-  }
-}
 
 /** Resolve the panopticon CLI binary from PATH (globally installed). */
 export function resolvePanopticonBin(): string | null {
