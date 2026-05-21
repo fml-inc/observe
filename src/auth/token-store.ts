@@ -48,15 +48,9 @@ export function readTokens(envName?: string): StoredAuth | null {
 
 export function writeTokens(auth: StoredAuth, envName?: string): void {
   ensureDir(envName);
-  const target = storePathFor(envName);
-  // Write atomically (temp file + rename) so a concurrent reader — or a process
-  // killed mid-write — never sees a truncated/empty token file. A plain
-  // writeFileSync truncates in place, which under multiple fml processes
-  // (CLI + MCP servers) can leave the file empty and surface as
-  // "no stored tokens".
-  const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(auth, null, 2), { mode: 0o600 });
-  fs.renameSync(tmp, target);
+  fs.writeFileSync(storePathFor(envName), JSON.stringify(auth, null, 2), {
+    mode: 0o600,
+  });
 }
 
 export function getSelectedOrg(): string | null {
@@ -257,20 +251,6 @@ export async function getValidToken(opts?: {
   }
 }
 
-/**
- * A sibling fml process may have refreshed concurrently — WorkOS rotates the
- * refresh token on use, so our in-memory copy can already be invalidated. When
- * a refresh fails, re-read the on-disk token and use it if it's now valid,
- * rather than reporting a spurious auth failure.
- */
-function siblingRefreshedToken(envName?: string): string | null {
-  const fresh = readTokens(envName);
-  if (fresh?.accessToken && fresh.expiresAt > Date.now() + 60_000) {
-    return fresh.accessToken;
-  }
-  return null;
-}
-
 async function refreshToken(
   stored: StoredAuth,
   envName?: string,
@@ -297,8 +277,6 @@ async function refreshToken(
     );
 
     if (!response.ok) {
-      const sibling = siblingRefreshedToken(envName);
-      if (sibling) return sibling;
       console.error(
         `[fml] Auth: refresh failed (HTTP ${response.status}) — token preserved`,
       );
@@ -337,8 +315,6 @@ async function refreshToken(
     writeTokens(refreshed, envName);
     return refreshed.accessToken;
   } catch (err: unknown) {
-    const sibling = siblingRefreshedToken(envName);
-    if (sibling) return sibling;
     const msg = err instanceof Error ? err.message : String(err);
     console.error(
       `[fml] Auth: refresh failed (network error: ${msg}) — token preserved`,
