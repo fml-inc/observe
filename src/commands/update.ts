@@ -22,7 +22,7 @@ export async function handleUpdate(): Promise<void> {
       env,
     });
 
-    console.log("\nUpdated. Run `fml install --skip-build` to reconfigure.");
+    console.log("\nUpdated. Run `fml install --force` to reconfigure.");
   } catch (err: unknown) {
     Sentry.captureException(err);
     const msg =

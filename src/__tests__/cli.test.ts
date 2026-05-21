@@ -33,8 +33,7 @@ describe("CLI integration", () => {
       expect(stdout).toContain("status");
       expect(stdout).toContain("doctor");
       expect(stdout).toContain("open");
-      expect(stdout).toContain("start");
-      expect(stdout).toContain("stop");
+      expect(stdout).toContain("panopticon");
       expect(stdout).toContain("sync");
     });
 

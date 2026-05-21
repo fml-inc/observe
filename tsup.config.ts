@@ -35,5 +35,4 @@ export default defineConfig({
   sourcemap: true,
   shims: true,
   noExternal: ["@sentry/core"],
-  external: ["better-sqlite3"],
 });
