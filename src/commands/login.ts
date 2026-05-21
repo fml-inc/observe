@@ -6,7 +6,11 @@ import {
 } from "@fml-inc/panopticon/sync";
 import { login, canOpenBrowser } from "../auth/oauth.js";
 import { deviceLogin } from "../auth/device-flow.js";
-import { getValidToken, setSelectedOrg } from "../auth/token-store.js";
+import {
+  getSelectedOrg,
+  getValidToken,
+  setSelectedOrg,
+} from "../auth/token-store.js";
 import { createApiClient } from "../convex-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
 import {
@@ -150,7 +154,12 @@ async function selectOrg(): Promise<void> {
     const orgs = await api.queryOrgs();
     if (orgs.length === 0) return;
 
-    const org = orgs[0];
+    // Preserve the user's existing selection if it's still a valid org —
+    // only fall back to the first org when nothing valid is selected. Logging
+    // in (or re-logging-in) should not silently reset a prior `fml org <slug>`.
+    const current = getSelectedOrg();
+    const org =
+      (current && orgs.find((o) => (o.slug ?? o.name) === current)) || orgs[0];
     const slug = org.slug ?? org.name;
     setSelectedOrg(slug);
     console.log(`Selected org: ${org.name} (${slug})`);
