@@ -219,30 +219,30 @@ export function createApiClient(token: string) {
 
     async listTools(pluginVersion?: string): Promise<PublicToolDescriptor[]> {
       try {
-        // Always use the HTTP catalog endpoint — it accepts both a service
-        // token and a user WorkOS JWT. A raw client.query rejects the user
-        // JWT (no `aud` claim, which Convex's client-protocol auth requires),
-        // so the httpAction path is the only one that works for both.
-        const url = new URL(`${getSiteUrl()}/api/tools/list`);
-        if (pluginVersion) url.searchParams.set("pluginVersion", pluginVersion);
-        const res = await fetch(url.toString(), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const text = await res.text();
-        let data: {
-          ok: boolean;
-          descriptors?: PublicToolDescriptor[];
-          error?: string;
-        };
-        try {
-          data = JSON.parse(text) as typeof data;
-        } catch {
-          throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+        if (isServiceToken) {
+          const url = new URL(`${getSiteUrl()}/api/tools/list`);
+          if (pluginVersion) url.searchParams.set("pluginVersion", pluginVersion);
+          const res = await fetch(url.toString(), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const text = await res.text();
+          let data: { ok: boolean; descriptors?: PublicToolDescriptor[]; error?: string };
+          try {
+            data = JSON.parse(text) as typeof data;
+          } catch {
+            throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+          }
+          if (!data.ok || !data.descriptors) {
+            throw new Error(data.error ?? `HTTP ${res.status}`);
+          }
+          return data.descriptors;
         }
-        if (!data.ok || !data.descriptors) {
-          throw new Error(data.error ?? `HTTP ${res.status}`);
-        }
-        return data.descriptors;
+
+        const client = await getClient();
+        return await client.query<PublicToolDescriptor[]>(
+          ref<"query">("user/plugin_tools:listTools"),
+          pluginVersion ? { pluginVersion } : {},
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("Unauthorized") || msg.includes("not authenticated")) {
