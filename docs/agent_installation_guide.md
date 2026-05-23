@@ -109,7 +109,7 @@ The sandbox doesn't allow global installs as your user. Try `npm install -g @fml
 
 ## What's available after a successful install
 
-Once `fml doctor` is green, your coding-agent session has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
+Once `fml doctor` is green, your coding-agent session has a set of MCP tools from the `fml` MCP server: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
 
 CLI commands you'll use most from an agent session:
 
