@@ -167,6 +167,22 @@ describe("createFmlClient.listTools — JWT path (also routes through HTTP)", ()
     const api = createFmlClient(JWT_TOKEN);
     await expect(api.listTools()).rejects.toThrow("fml login");
   });
+
+  it("uses tool error codes to translate auth failures", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () =>
+        JSON.stringify({
+          ok: false,
+          error: "Missing Authorization header",
+          code: "UNAUTHENTICATED",
+        }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await expect(api.listTools()).rejects.toThrow("fml login");
+  });
 });
 
 describe("createFmlClient.callBackend — unified HTTP path", () => {
@@ -276,5 +292,72 @@ describe("createFmlClient.callBackend — unified HTTP path", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain("fml login");
+  });
+
+  it("uses tool error codes to translate token expiry", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () =>
+        JSON.stringify({
+          ok: false,
+          error: "Token expired",
+          code: "TOKEN_EXPIRED",
+        }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    const result = await api.callBackend("ping", {});
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
+      code: "TOKEN_EXPIRED",
+    });
+  });
+
+  it("preserves non-auth tool error codes for callers", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () =>
+        JSON.stringify({
+          ok: false,
+          error: "Access denied",
+          code: "ACCESS_DENIED",
+        }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    const result = await api.callBackend("ping", {});
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Access denied",
+      code: "ACCESS_DENIED",
+    });
+  });
+
+  it("preserves unknown tool error codes for forward compatibility", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: async () =>
+        JSON.stringify({
+          ok: false,
+          error: "Try again later",
+          code: "NEW_BACKEND_CODE",
+        }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    const result = await api.callBackend("ping", {});
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Try again later",
+      code: "NEW_BACKEND_CODE",
+    });
   });
 });
