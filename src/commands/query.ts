@@ -3,7 +3,7 @@
  * Routes requests to the appropriate backend tool based on provider and endpoint.
  */
 
-import { getAuthenticatedClient } from "../convex-client.js";
+import { getAuthenticatedClient } from "../fml-client.js";
 
 const GENERIC_PROVIDERS = [
   "sentry",

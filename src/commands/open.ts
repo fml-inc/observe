@@ -1,4 +1,4 @@
-import { getAuthenticatedClient } from "../convex-client.js";
+import { getAuthenticatedClient } from "../fml-client.js";
 
 const APP_BASE_URL = "https://app.fml.app";
 

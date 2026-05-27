@@ -35,7 +35,7 @@ vi.mock("@fml-inc/panopticon/repo", () => ({
   resolveRepoFromCwd: () => mockResolveRepoFromCwd(),
 }));
 
-import { createApiClient, type PublicToolDescriptor } from "../convex-client.js";
+import { createFmlClient, type PublicToolDescriptor } from "../fml-client.js";
 
 const DESCRIPTORS: PublicToolDescriptor[] = [
   {
@@ -52,7 +52,7 @@ const JWT_TOKEN = "eyJhbGciOiJSUzI1NiJ9.test.signature";
 // The site URL is derived from CONVEX_URL by replacing .convex.cloud -> .convex.site
 const SITE_URL = "https://test.convex.site";
 
-describe("createApiClient.listTools — service token path", () => {
+describe("createFmlClient.listTools — service token path", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -70,7 +70,7 @@ describe("createApiClient.listTools — service token path", () => {
         JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
     } as Response);
 
-    const api = createApiClient(SERVICE_TOKEN);
+    const api = createFmlClient(SERVICE_TOKEN);
     const result = await api.listTools("1.2.3");
 
     expect(fetchSpy).toHaveBeenCalledOnce();
@@ -88,7 +88,7 @@ describe("createApiClient.listTools — service token path", () => {
         JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
     } as Response);
 
-    const api = createApiClient(SERVICE_TOKEN);
+    const api = createFmlClient(SERVICE_TOKEN);
     await api.listTools();
 
     const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -100,7 +100,7 @@ describe("createApiClient.listTools — service token path", () => {
       text: async () => JSON.stringify({ ok: false, error: "fml login required" }),
     } as Response);
 
-    const api = createApiClient(SERVICE_TOKEN);
+    const api = createFmlClient(SERVICE_TOKEN);
     await expect(api.listTools()).rejects.toThrow("fml login required");
   });
 
@@ -110,12 +110,12 @@ describe("createApiClient.listTools — service token path", () => {
       text: async () => "Bad Gateway",
     } as Response);
 
-    const api = createApiClient(SERVICE_TOKEN);
+    const api = createFmlClient(SERVICE_TOKEN);
     await expect(api.listTools()).rejects.toThrow("HTTP 502");
   });
 });
 
-describe("createApiClient.listTools — JWT path (also routes through HTTP)", () => {
+describe("createFmlClient.listTools — JWT path (also routes through HTTP)", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -133,7 +133,7 @@ describe("createApiClient.listTools — JWT path (also routes through HTTP)", ()
         JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
     } as Response);
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     const result = await api.listTools("2.0.0");
 
     expect(fetchSpy).toHaveBeenCalledOnce();
@@ -152,7 +152,7 @@ describe("createApiClient.listTools — JWT path (also routes through HTTP)", ()
         JSON.stringify({ ok: true, descriptors: DESCRIPTORS }),
     } as Response);
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     await api.listTools();
 
     const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -164,12 +164,12 @@ describe("createApiClient.listTools — JWT path (also routes through HTTP)", ()
       text: async () => JSON.stringify({ ok: false, error: "Unauthorized" }),
     } as Response);
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     await expect(api.listTools()).rejects.toThrow("fml login");
   });
 });
 
-describe("createApiClient.callBackend — unified HTTP path", () => {
+describe("createFmlClient.callBackend — unified HTTP path", () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -194,7 +194,7 @@ describe("createApiClient.callBackend — unified HTTP path", () => {
     mockGetSelectedOrg.mockReturnValue("acme");
     mockResolveRepoFromCwd.mockReturnValue({ repo: "acme/repo" });
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     const result = await api.callBackend("list-engineering-sessions", {
       limit: 5,
     });
@@ -224,7 +224,7 @@ describe("createApiClient.callBackend — unified HTTP path", () => {
     } as Response);
     mockGetSelectedOrg.mockReturnValue("stored-org");
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     await api.callBackend("ping", {}, { org: "explicit-org" });
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -242,7 +242,7 @@ describe("createApiClient.callBackend — unified HTTP path", () => {
     mockReadTokens.mockReturnValue({ user: { id: "stored-user" } });
     vi.stubEnv("FML_USER_EXTERNAL_ID", "env-user");
 
-    const api = createApiClient(SERVICE_TOKEN);
+    const api = createFmlClient(SERVICE_TOKEN);
     await api.callBackend("get-engineering-activity", {});
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
@@ -257,7 +257,7 @@ describe("createApiClient.callBackend — unified HTTP path", () => {
       text: async () => "Bad Gateway",
     } as Response);
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     await expect(api.callBackend("ping", {})).resolves.toEqual({
       ok: false,
       error: "HTTP 502: Bad Gateway",
@@ -271,7 +271,7 @@ describe("createApiClient.callBackend — unified HTTP path", () => {
       text: async () => JSON.stringify({ ok: false, error: "Unauthorized" }),
     } as Response);
 
-    const api = createApiClient(JWT_TOKEN);
+    const api = createFmlClient(JWT_TOKEN);
     const result = await api.callBackend("ping", {});
 
     expect(result.ok).toBe(false);

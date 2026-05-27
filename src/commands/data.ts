@@ -3,7 +3,7 @@
  * Each command queries the FML Convex backend via the authenticated API client.
  */
 
-import { getAuthenticatedClient } from "../convex-client.js";
+import { getAuthenticatedClient } from "../fml-client.js";
 
 async function queryBackend(
   toolName: string,

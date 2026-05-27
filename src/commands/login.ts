@@ -11,7 +11,7 @@ import {
   getValidToken,
   setSelectedOrg,
 } from "../auth/token-store.js";
-import { createApiClient } from "../convex-client.js";
+import { createFmlClient } from "../fml-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
 import {
   CONVEX_URL,
@@ -150,7 +150,7 @@ async function selectOrg(): Promise<void> {
     const token = await getValidToken();
     if (!token) return;
 
-    const api = createApiClient(token);
+    const api = createFmlClient(token);
     const orgs = await api.queryOrgs();
     if (orgs.length === 0) return;
 

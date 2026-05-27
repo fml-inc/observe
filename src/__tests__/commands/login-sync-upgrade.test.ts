@@ -21,7 +21,7 @@ vi.mock("../../auth/token-store.js", () => ({
   getValidToken: vi.fn(),
   setSelectedOrg: vi.fn(),
 }));
-vi.mock("../../convex-client.js", () => ({ createApiClient: vi.fn() }));
+vi.mock("../../fml-client.js", () => ({ createFmlClient: vi.fn() }));
 vi.mock("../../sync/client.js", () => ({ resolveGitHubToken: vi.fn() }));
 vi.mock("../../sentry.js", () => ({ Sentry: { captureException: vi.fn() } }));
 const mockGetActiveEnv = vi.fn(() => ({

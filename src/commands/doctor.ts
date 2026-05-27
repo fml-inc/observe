@@ -1,7 +1,7 @@
 import ora from "ora";
 import pc from "picocolors";
 import { getValidToken, readTokens } from "../auth/token-store.js";
-import { createApiClient } from "../convex-client.js";
+import { createFmlClient } from "../fml-client.js";
 import { CONVEX_URL } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { parsePanopticonRunning } from "./daemon.js";
@@ -224,7 +224,7 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     const spinner = startSpinner("API");
     if (token) {
       try {
-        const result = await createApiClient(token).callBackend("ping", {});
+        const result = await createFmlClient(token).callBackend("ping", {});
         if (result.ok) {
           pushAndReport(
             {

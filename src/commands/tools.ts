@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { getAuthenticatedClient, type PublicToolDescriptor } from "../convex-client.js";
+import { getAuthenticatedClient, type PublicToolDescriptor } from "../fml-client.js";
 
 declare const __FML_PLUGIN_VERSION__: string;
 const pluginVersion =

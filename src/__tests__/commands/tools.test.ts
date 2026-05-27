@@ -7,7 +7,7 @@ const mockListTools = vi.fn();
 const mockCallBackend = vi.fn();
 const mockGetAuthenticatedClient = vi.fn();
 
-vi.mock("../../convex-client.js", () => ({
+vi.mock("../../fml-client.js", () => ({
   getAuthenticatedClient: (...args: unknown[]) =>
     mockGetAuthenticatedClient(...args),
 }));
