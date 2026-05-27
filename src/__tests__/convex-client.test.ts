@@ -13,7 +13,7 @@ vi.mock("../sentry.js", () => ({
 }));
 
 const mockReadTokens = vi.fn();
-const mockGetSelectedOrg = vi.fn(() => undefined);
+const mockGetSelectedOrg = vi.fn<() => string | undefined>(() => undefined);
 vi.mock("../auth/token-store.js", () => ({
   readTokens: () => mockReadTokens(),
   getValidToken: vi.fn(),
@@ -22,6 +22,7 @@ vi.mock("../auth/token-store.js", () => ({
 
 const mockConvexQuery = vi.fn();
 const mockConvexAction = vi.fn();
+const mockResolveRepoFromCwd = vi.fn<() => { repo: string } | null>(() => null);
 vi.mock("convex/browser", () => ({
   ConvexHttpClient: class {
     setAuth() {}
@@ -31,7 +32,7 @@ vi.mock("convex/browser", () => ({
 }));
 
 vi.mock("@fml-inc/panopticon/repo", () => ({
-  resolveRepoFromCwd: vi.fn(() => null),
+  resolveRepoFromCwd: () => mockResolveRepoFromCwd(),
 }));
 
 import { createApiClient, type PublicToolDescriptor } from "../convex-client.js";
@@ -165,5 +166,115 @@ describe("createApiClient.listTools — JWT path (also routes through HTTP)", ()
 
     const api = createApiClient(JWT_TOKEN);
     await expect(api.listTools()).rejects.toThrow("fml login");
+  });
+});
+
+describe("createApiClient.callBackend — unified HTTP path", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetSelectedOrg.mockReturnValue(undefined);
+    mockReadTokens.mockReturnValue(null);
+    mockResolveRepoFromCwd.mockReturnValue(null);
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("calls POST /api/tools/execute for JWT callers instead of Convex action", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: { done: true } }),
+    } as Response);
+    mockGetSelectedOrg.mockReturnValue("acme");
+    mockResolveRepoFromCwd.mockReturnValue({ repo: "acme/repo" });
+
+    const api = createApiClient(JWT_TOKEN);
+    const result = await api.callBackend("list-engineering-sessions", {
+      limit: 5,
+    });
+
+    expect(result).toEqual({ ok: true, result: { done: true } });
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${SITE_URL}/api/tools/execute`);
+    expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      `Bearer ${JWT_TOKEN}`,
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
+      toolName: "list-engineering-sessions",
+      args: { limit: 5 },
+      org: "acme",
+      repo: "acme/repo",
+    });
+    expect(mockConvexAction).not.toHaveBeenCalled();
+  });
+
+  it("lets explicit org override selected org", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: null }),
+    } as Response);
+    mockGetSelectedOrg.mockReturnValue("stored-org");
+
+    const api = createApiClient(JWT_TOKEN);
+    await api.callBackend("ping", {}, { org: "explicit-org" });
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      org: "explicit-org",
+    });
+  });
+
+  it("forwards service-token userExternalId only for service-token callers", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: "ok" }),
+    } as Response);
+    mockReadTokens.mockReturnValue({ user: { id: "stored-user" } });
+    vi.stubEnv("FML_USER_EXTERNAL_ID", "env-user");
+
+    const api = createApiClient(SERVICE_TOKEN);
+    await api.callBackend("get-engineering-activity", {});
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      userExternalId: "env-user",
+    });
+  });
+
+  it("maps non-JSON HTTP response to ToolResult error", async () => {
+    fetchSpy.mockResolvedValue({
+      status: 502,
+      text: async () => "Bad Gateway",
+    } as Response);
+
+    const api = createApiClient(JWT_TOKEN);
+    await expect(api.callBackend("ping", {})).resolves.toEqual({
+      ok: false,
+      error: "HTTP 502: Bad Gateway",
+    });
+  });
+
+  it("translates unauthenticated HTTP envelope to login guidance", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({ ok: false, error: "Unauthorized" }),
+    } as Response);
+
+    const api = createApiClient(JWT_TOKEN);
+    const result = await api.callBackend("ping", {});
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("fml login");
   });
 });

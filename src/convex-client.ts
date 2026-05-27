@@ -151,57 +151,65 @@ export function createApiClient(token: string) {
       opts?: { org?: string },
     ): Promise<ToolResult> {
       try {
+        // Unified CLI/MCP path: POST to the dual-auth HTTP endpoint for both
+        // service tokens and WorkOS/JWT user tokens. This keeps command
+        // handlers independent of token class and matches the backend's agent
+        // tool contract.
+        const body: Record<string, unknown> = { toolName, args };
+
+        // Explicit org > stored org selection > repo-based inference.
+        const org = opts?.org ?? getSelectedOrg();
+        if (org) body.org = org;
+        const repo = resolveRepoFromCwd(process.cwd());
+        if (repo) body.repo = repo.repo;
+
+        // Thread user identity for service-token-backed sandbox agents. For
+        // JWT callers this is ignored by the backend; for service tokens the
+        // backend validates membership before honoring the override.
         if (isServiceToken) {
-          // Service token path: POST to HTTP endpoint (Convex can't validate non-JWT tokens)
-          // Thread user identity: sandbox agents set FML_USER_EXTERNAL_ID;
-          // device-flow logins fall back to the id stashed on the stored token
-          // so tools can execute with the real user context even though the
-          // token's actAsExternalId is the namespaced system:cli:* string.
           const { readTokens } = await import("./auth/token-store.js");
           const userExternalId =
             process.env.FML_USER_EXTERNAL_ID ?? readTokens()?.user.id;
-          const res = await fetch(`${getSiteUrl()}/api/tools/execute`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              toolName,
-              args,
-              ...(userExternalId && { userExternalId }),
-            }),
-          });
-          const text = await res.text();
-          let data: ToolResult;
-          try {
-            data = JSON.parse(text) as ToolResult;
-          } catch {
-            return {
-              ok: false,
-              error: `HTTP ${res.status}: ${text.slice(0, 200)}`,
-            };
-          }
-          if (!res.ok && !data.error) {
-            return { ok: false, error: `HTTP ${res.status}` };
-          }
-          return data;
+          if (userExternalId) body.userExternalId = userExternalId;
         }
 
-        // JWT path: standard Convex action
-        const client = await getClient();
-        const actionArgs: Record<string, unknown> = { toolName, args };
-        // Explicit org > stored org selection > repo-based inference
-        const org = opts?.org ?? getSelectedOrg();
-        if (org) actionArgs.org = org;
-        const repo = resolveRepoFromCwd(process.cwd());
-        if (repo) actionArgs.repo = repo.repo;
-
-        const result = await client.action(
-          ref<"action">("user/tool_gateway:executeTool"),
-          actionArgs,
-        );
-        return { ok: true, result };
+        const res = await fetch(`${getSiteUrl()}/api/tools/execute`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let data: ToolResult;
+        try {
+          data = JSON.parse(text) as ToolResult;
+        } catch {
+          return {
+            ok: false,
+            error: `HTTP ${res.status}: ${text.slice(0, 200)}`,
+          };
+        }
+        if (!res.ok && !data.error) {
+          return { ok: false, error: `HTTP ${res.status}` };
+        }
+        // The HTTP tool endpoint reports auth failures in its JSON envelope.
+        // The catch block below keeps the same user-friendly message for
+        // thrown auth-shaped errors (network/client/future helper failures).
+        if (
+          !data.ok &&
+          data.error &&
+          (data.error.includes("Unauthorized") ||
+            data.error.includes("not authenticated"))
+        ) {
+          return {
+            ok: false,
+            error:
+              "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
+          };
+        }
+        return data;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("Unauthorized") || msg.includes("not authenticated")) {
