@@ -60,12 +60,26 @@ describe("token-store", () => {
   });
 
   describe("getValidToken", () => {
-    it("returns FML_TOKEN env var when set", async () => {
-      vi.stubEnv("FML_TOKEN", "pat_from_env");
+    it("returns static fml_st_* FML_TOKEN env var when set", async () => {
+      vi.stubEnv("FML_TOKEN", "fml_st_env");
       // Even with stored tokens, env var takes precedence
       writeTokens(makeAuth());
       const token = await getValidToken();
-      expect(token).toBe("pat_from_env");
+      expect(token).toBe("fml_st_env");
+    });
+
+    it("rejects unsupported FML_TOKEN formats without using stored tokens", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.stubEnv("FML_TOKEN", "pat_from_env");
+      writeTokens(makeAuth({ accessToken: "stored_tok" }));
+
+      const token = await getValidToken();
+
+      expect(token).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith(
+        "[fml] Auth: unsupported FML_TOKEN format. Expected fml_srt_* or fml_st_*.",
+      );
+      errorSpy.mockRestore();
     });
 
     it("returns null when no auth and no env var", async () => {
@@ -84,6 +98,29 @@ describe("token-store", () => {
       writeTokens(makeAuth({ accessToken: "stored_tok" }));
       const token = await getValidToken();
       expect(token).toBe("stored_tok");
+    });
+
+    it("refreshes fml_srt_* FML_TOKEN env var", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          accessToken: "fml_st_refreshed",
+          expiresAt: Date.now() + 300_000,
+        }),
+      } as Response);
+      vi.stubEnv("FML_TOKEN", "fml_srt_refresh");
+
+      const token = await getValidToken();
+
+      expect(token).toBe("fml_st_refreshed");
+      expect(fetchSpy).toHaveBeenCalledOnce();
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://test.convex.site/api/tokens/refresh");
+      expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+        "Bearer fml_srt_refresh",
+      );
+      fetchSpy.mockRestore();
     });
 
     it("reads the env-specific store when env is provided", async () => {
