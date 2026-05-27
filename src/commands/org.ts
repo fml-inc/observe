@@ -1,4 +1,4 @@
-import { createApiClient } from "../convex-client.js";
+import { createFmlClient } from "../fml-client.js";
 import {
   getSelectedOrg,
   getValidToken,
@@ -12,7 +12,7 @@ export async function handleOrg(slug?: string): Promise<void> {
     process.exit(1);
   }
 
-  const api = createApiClient(token);
+  const api = createFmlClient(token);
   const orgs = await api.queryOrgs();
 
   if (orgs.length === 0) {

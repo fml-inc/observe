@@ -1,4 +1,4 @@
-import { getAuthenticatedClient } from "../convex-client.js";
+import { getAuthenticatedClient } from "../fml-client.js";
 
 export async function handleMemoryList(opts: {
   scope?: string;

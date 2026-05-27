@@ -60,7 +60,7 @@ function ref<T extends "query" | "mutation" | "action">(
 
 // ── API client factory ──────────────────────────────────────────────────────
 
-export function createApiClient(token: string) {
+export function createFmlClient(token: string) {
   const isServiceToken = token.startsWith("fml_st_");
 
   let clientPromise: Promise<{
@@ -361,5 +361,5 @@ export function createApiClient(token: string) {
 export async function getAuthenticatedClient() {
   const token = await getValidToken();
   if (!token) return null;
-  return createApiClient(token);
+  return createFmlClient(token);
 }

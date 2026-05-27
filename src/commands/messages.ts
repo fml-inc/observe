@@ -1,4 +1,4 @@
-import { getAuthenticatedClient } from "../convex-client.js";
+import { getAuthenticatedClient } from "../fml-client.js";
 
 export async function handleMessagesList(opts: {
   start?: string;

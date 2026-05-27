@@ -6,10 +6,10 @@ import {
   readTokens,
 } from "../auth/token-store.js";
 import {
-  createApiClient,
+  createFmlClient,
   getAuthenticatedClient,
   type ToolResult,
-} from "../convex-client.js";
+} from "../fml-client.js";
 import { resolveRepoFromCwd } from "@fml-inc/panopticon/repo";
 import { Sentry } from "../sentry.js";
 
@@ -65,7 +65,7 @@ export function registerTools(server: McpServer): void {
       let orgs = null;
       if (token) {
         try {
-          orgs = await createApiClient(token).queryOrgs();
+          orgs = await createFmlClient(token).queryOrgs();
         } catch {}
       }
       return textResult({
