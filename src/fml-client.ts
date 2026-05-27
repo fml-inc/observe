@@ -33,10 +33,25 @@ export interface PublicToolDescriptor {
   experimental?: boolean;
 }
 
+export type KnownToolErrorCode =
+  | "UNAUTHENTICATED"
+  | "TOKEN_EXPIRED"
+  | "ACCESS_DENIED"
+  | "ORG_REQUIRED"
+  | "ORG_NOT_FOUND"
+  | "REPO_NOT_FOUND"
+  | "UNKNOWN_TOOL"
+  | "INVALID_ARGS"
+  | "RATE_LIMITED"
+  | "INTERNAL_ERROR";
+
+export type ToolErrorCode = KnownToolErrorCode | (string & {});
+
 export interface ToolResult {
   ok: boolean;
   result?: unknown;
   error?: string;
+  code?: ToolErrorCode;
 }
 
 export interface OrgInfo {
@@ -56,6 +71,25 @@ function ref<T extends "query" | "mutation" | "action">(
   path: string,
 ): FunctionReference<T> {
   return path as unknown as FunctionReference<T>;
+}
+
+const LOGIN_EXPIRED_MESSAGE =
+  "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.";
+
+function isAuthError(data: { error?: string; code?: string }): boolean {
+  return (
+    data.code === "UNAUTHENTICATED" ||
+    data.code === "TOKEN_EXPIRED" ||
+    data.error?.includes("Unauthorized") === true ||
+    data.error?.includes("not authenticated") === true
+  );
+}
+
+function normalizeToolResult(data: ToolResult): ToolResult {
+  if (!data.ok && isAuthError(data)) {
+    return { ok: false, error: LOGIN_EXPIRED_MESSAGE, code: data.code };
+  }
+  return data;
 }
 
 // ── API client factory ──────────────────────────────────────────────────────
@@ -122,8 +156,12 @@ export function createFmlClient(token: string) {
         return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` };
       }
       if (!res.ok) {
-        const err = (data as { error?: string }).error;
-        return { ok: false, error: err ?? `HTTP ${res.status}` };
+        const envelope = data as { error?: string; code?: ToolErrorCode };
+        return normalizeToolResult({
+          ok: false,
+          error: envelope.error ?? `HTTP ${res.status}`,
+          code: envelope.code,
+        });
       }
       return { ok: true, result: data };
     } catch (err) {
@@ -194,30 +232,11 @@ export function createFmlClient(token: string) {
         if (!res.ok && !data.error) {
           return { ok: false, error: `HTTP ${res.status}` };
         }
-        // The HTTP tool endpoint reports auth failures in its JSON envelope.
-        // The catch block below keeps the same user-friendly message for
-        // thrown auth-shaped errors (network/client/future helper failures).
-        if (
-          !data.ok &&
-          data.error &&
-          (data.error.includes("Unauthorized") ||
-            data.error.includes("not authenticated"))
-        ) {
-          return {
-            ok: false,
-            error:
-              "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
-          };
-        }
-        return data;
+        return normalizeToolResult(data);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("Unauthorized") || msg.includes("not authenticated")) {
-          return {
-            ok: false,
-            error:
-              "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
-          };
+          return { ok: false, error: LOGIN_EXPIRED_MESSAGE };
         }
         return { ok: false, error: msg };
       }
@@ -241,6 +260,7 @@ export function createFmlClient(token: string) {
           ok: boolean;
           descriptors?: PublicToolDescriptor[];
           error?: string;
+          code?: ToolErrorCode;
         };
         try {
           data = JSON.parse(text) as typeof data;
@@ -248,15 +268,16 @@ export function createFmlClient(token: string) {
           throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
         }
         if (!data.ok || !data.descriptors) {
+          if (isAuthError(data)) {
+            throw new Error(LOGIN_EXPIRED_MESSAGE);
+          }
           throw new Error(data.error ?? `HTTP ${res.status}`);
         }
         return data.descriptors;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("Unauthorized") || msg.includes("not authenticated")) {
-          throw new Error(
-            "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.",
-          );
+          throw new Error(LOGIN_EXPIRED_MESSAGE);
         }
         throw err;
       }
