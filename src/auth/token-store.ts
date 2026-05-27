@@ -190,8 +190,15 @@ export async function getValidToken(opts?: {
     }
   }
 
-  // Static service token (legacy) or plain env override
-  if (envToken) return envToken;
+  // Static service access token.
+  if (envToken?.startsWith("fml_st_")) return envToken;
+
+  if (envToken) {
+    console.error(
+      "[fml] Auth: unsupported FML_TOKEN format. Expected fml_srt_* or fml_st_*.",
+    );
+    return null;
+  }
 
   // Stored token path (OAuth or device flow)
   const stored = readTokens(envName);
