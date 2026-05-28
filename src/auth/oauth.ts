@@ -1,21 +1,25 @@
 import crypto from "node:crypto";
 import http from "node:http";
-import { CONVEX_URL, WORKOS_API_URL, WORKOS_AUTH_URL } from "../config.js";
+import { getSiteUrl, WORKOS_API_URL, WORKOS_AUTH_URL } from "../config.js";
 import { writeTokens } from "./token-store.js";
 
 /**
- * Fetch the WorkOS client ID from the active Convex deployment.
+ * Fetch the WorkOS client ID from the active backend deployment.
  * This allows each environment to use its own WorkOS configuration.
  */
 async function fetchWorkosClientId(): Promise<string> {
-  const { ConvexHttpClient } = await import("convex/browser");
-  const client = new ConvexHttpClient(CONVEX_URL);
-  const ref =
-    "public_config:getAuthConfig" as unknown as import("convex/server").FunctionReference<"query">;
-  const result = (await client.query(ref, {})) as {
-    workosClientId: string;
+  const response = await fetch(`${getSiteUrl()}/api/auth/config`);
+  const data = (await response.json()) as {
+    ok?: boolean;
+    workosClientId?: string;
+    error?: string;
   };
-  return result.workosClientId;
+
+  if (!response.ok || data.ok === false || !data.workosClientId) {
+    throw new Error(data.error ?? `HTTP ${response.status}`);
+  }
+
+  return data.workosClientId;
 }
 
 /**

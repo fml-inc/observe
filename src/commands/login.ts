@@ -1,4 +1,3 @@
-import type { FunctionReference } from "convex/server";
 import {
   addTarget,
   loadSyncConfig,
@@ -14,9 +13,9 @@ import {
 import { createFmlClient } from "../fml-client.js";
 import { resolveGitHubToken } from "../sync/client.js";
 import {
-  CONVEX_URL,
   DEFAULT_SYNC_URL,
   getActiveEnv,
+  getSiteUrl,
   isValidEnvName,
 } from "../config.js";
 import { Sentry } from "../sentry.js";
@@ -64,17 +63,25 @@ async function linkGitHubIdentity(): Promise<void> {
       return;
     }
 
-    const { ConvexHttpClient } = await import("convex/browser");
-    const client = new ConvexHttpClient(CONVEX_URL);
-    client.setAuth(fmlToken);
-
-    const ref =
-      "user/panopticon:linkGitHubIdentity" as unknown as FunctionReference<"mutation">;
-    await client.mutation(ref, {
-      githubUsername: user.login,
-      githubId: user.id,
-      githubEmail: user.email ?? undefined,
+    const linkResponse = await fetch(`${getSiteUrl()}/api/auth/link-github-identity`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fmlToken}`,
+      },
+      body: JSON.stringify({
+        githubUsername: user.login,
+        githubId: user.id,
+        githubEmail: user.email ?? undefined,
+      }),
     });
+    const linkResult = (await linkResponse.json()) as {
+      ok?: boolean;
+      error?: string;
+    };
+    if (!linkResponse.ok || linkResult.ok === false) {
+      throw new Error(linkResult.error ?? `HTTP ${linkResponse.status}`);
+    }
 
     console.log(`Linked GitHub account: ${user.login}`);
   } catch (err: unknown) {
