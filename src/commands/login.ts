@@ -32,25 +32,6 @@ async function linkGitHubIdentity(): Promise<void> {
   }
 
   try {
-    const response = await fetch("https://api.github.com/user", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-      },
-    });
-    if (!response.ok) {
-      console.warn(
-        `[fml] GitHub API returned ${response.status} — skipping identity link`,
-      );
-      return;
-    }
-
-    const user = (await response.json()) as {
-      login: string;
-      id: number;
-      email: string | null;
-    };
-
     const fmlToken = await getValidToken();
     if (!fmlToken) {
       console.warn("[fml] No FML token available — skipping identity link");
@@ -69,11 +50,7 @@ async function linkGitHubIdentity(): Promise<void> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${fmlToken}`,
       },
-      body: JSON.stringify({
-        githubUsername: user.login,
-        githubId: user.id,
-        githubEmail: user.email ?? undefined,
-      }),
+      body: JSON.stringify({ githubAccessToken: token }),
     });
     const linkResult = (await linkResponse.json()) as {
       ok?: boolean;
@@ -83,7 +60,7 @@ async function linkGitHubIdentity(): Promise<void> {
       throw new Error(linkResult.error ?? `HTTP ${linkResponse.status}`);
     }
 
-    console.log(`Linked GitHub account: ${user.login}`);
+    console.log("Linked GitHub account");
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[fml] Failed to link GitHub identity: ${msg}`);
