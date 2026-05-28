@@ -23,13 +23,6 @@ vi.mock("../auth/token-store.js", () => ({
 const mockConvexQuery = vi.fn();
 const mockConvexAction = vi.fn();
 const mockResolveRepoFromCwd = vi.fn<() => { repo: string } | null>(() => null);
-vi.mock("convex/browser", () => ({
-  ConvexHttpClient: class {
-    setAuth() {}
-    query(...args: unknown[]) { return mockConvexQuery(...args); }
-    action(...args: unknown[]) { return mockConvexAction(...args); }
-  },
-}));
 
 vi.mock("@fml-inc/panopticon/repo", () => ({
   resolveRepoFromCwd: () => mockResolveRepoFromCwd(),
