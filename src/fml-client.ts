@@ -1,4 +1,3 @@
-import type { FunctionReference } from "convex/server";
 import { resolveRepoFromCwd } from "@fml-inc/panopticon/repo";
 import { getSelectedOrg, getValidToken } from "./auth/token-store.js";
 import { CONVEX_URL } from "./config.js";
@@ -67,12 +66,6 @@ export interface OrgInfo {
   }>;
 }
 
-function ref<T extends "query" | "mutation" | "action">(
-  path: string,
-): FunctionReference<T> {
-  return path as unknown as FunctionReference<T>;
-}
-
 const LOGIN_EXPIRED_MESSAGE =
   "Authentication expired. Run `fml login` to sign in again, then restart Claude Code.";
 
@@ -92,36 +85,17 @@ function normalizeToolResult(data: ToolResult): ToolResult {
   return data;
 }
 
+function requireToolResult<T>(result: ToolResult): T {
+  if (!result.ok) {
+    throw new Error(result.error ?? "Backend request failed");
+  }
+  return result.result as T;
+}
+
 // ── API client factory ──────────────────────────────────────────────────────
 
 export function createFmlClient(token: string) {
   const isServiceToken = token.startsWith("fml_st_");
-
-  let clientPromise: Promise<{
-    query: <T>(
-      ref: FunctionReference<"query">,
-      args: Record<string, unknown>,
-    ) => Promise<T>;
-    mutation: <T>(
-      ref: FunctionReference<"mutation">,
-      args: Record<string, unknown>,
-    ) => Promise<T>;
-    action: <T>(
-      ref: FunctionReference<"action">,
-      args: Record<string, unknown>,
-    ) => Promise<T>;
-  }> | null = null;
-
-  function getClient() {
-    if (!clientPromise) {
-      clientPromise = import("convex/browser").then(({ ConvexHttpClient }) => {
-        const client = new ConvexHttpClient(CONVEX_URL);
-        client.setAuth(token);
-        return client;
-      });
-    }
-    return clientPromise;
-  }
 
   /**
    * Derive the Convex site URL (HTTP actions) from the cloud URL.
@@ -173,12 +147,8 @@ export function createFmlClient(token: string) {
     // ── Orgs ──────────────────────────────────────────────────────────────
 
     async queryOrgs(): Promise<OrgInfo[]> {
-      if (isServiceToken) {
-        // Service tokens can't call Convex actions directly — org is embedded in the token
-        return [];
-      }
-      const client = await getClient();
-      return await client.query(ref("user/plugin:getMyOrgsAndRepos"), {});
+      const result = await this.callBackend("list-orgs", {});
+      return requireToolResult<OrgInfo[] | null>(result) ?? [];
     },
 
     // ── Tool gateway ─────────────────────────────────────────────────────
@@ -317,11 +287,12 @@ export function createFmlClient(token: string) {
       orgSlug: string,
       repoFullName: string,
     ): Promise<ResolvedRepo | null> {
-      const client = await getClient();
-      return await client.query(ref("user/cli:resolveRepo"), {
-        orgSlug,
-        repoFullName,
-      });
+      const result = await this.callBackend(
+        "resolve-repo",
+        { orgSlug, repoFullName },
+        { org: orgSlug },
+      );
+      return requireToolResult<ResolvedRepo | null>(result);
     },
 
     // ── Config snapshots ─────────────────────────────────────────────────
@@ -329,46 +300,48 @@ export function createFmlClient(token: string) {
     async listUserConfigSnapshots(
       orgSlug: string,
     ): Promise<UserConfigSnapshotSummary[]> {
-      const client = await getClient();
-      const result = await client.query<UserConfigSnapshotSummary[] | null>(
-        ref("user/config_snapshots:listUserSnapshots"),
+      const result = await this.callBackend(
+        "list-user-config-snapshots",
         { orgSlug },
+        { org: orgSlug },
       );
-      return result ?? [];
+      return requireToolResult<UserConfigSnapshotSummary[] | null>(result) ?? [];
     },
 
     async getUserConfigDetail(
       orgSlug: string,
       githubUsername: string,
     ): Promise<UserConfigSnapshotDetail | null> {
-      const client = await getClient();
-      return await client.query(ref("user/config_snapshots:getUserDetail"), {
-        orgSlug,
-        githubUsername,
-      });
+      const result = await this.callBackend(
+        "get-user-config-snapshot",
+        { orgSlug, githubUsername },
+        { org: orgSlug },
+      );
+      return requireToolResult<UserConfigSnapshotDetail | null>(result);
     },
 
     async listRepoConfigSnapshots(
       orgSlug: string,
       repository?: string,
     ): Promise<RepoConfigSnapshotSummary[]> {
-      const client = await getClient();
-      const result = await client.query<RepoConfigSnapshotSummary[] | null>(
-        ref("user/config_snapshots:listRepoSnapshots"),
+      const result = await this.callBackend(
+        "list-repo-config-snapshots",
         { orgSlug, repository },
+        { org: orgSlug },
       );
-      return result ?? [];
+      return requireToolResult<RepoConfigSnapshotSummary[] | null>(result) ?? [];
     },
 
     async getRepoConfigDetail(
       orgSlug: string,
       repository: string,
     ): Promise<RepoConfigSnapshotDetail | null> {
-      const client = await getClient();
-      return await client.query(ref("user/config_snapshots:getRepoDetail"), {
-        orgSlug,
-        repository,
-      });
+      const result = await this.callBackend(
+        "get-repo-config-snapshot",
+        { orgSlug, repository },
+        { org: orgSlug },
+      );
+      return requireToolResult<RepoConfigSnapshotDetail | null>(result);
     },
   };
 }

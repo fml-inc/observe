@@ -267,6 +267,22 @@ describe("createFmlClient.callBackend — unified HTTP path", () => {
     });
   });
 
+  it("does not forward userExternalId for JWT callers", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: "ok" }),
+    } as Response);
+    mockReadTokens.mockReturnValue({ user: { id: "stored-user" } });
+    vi.stubEnv("FML_USER_EXTERNAL_ID", "env-user");
+
+    const api = createFmlClient(JWT_TOKEN);
+    await api.callBackend("get-engineering-activity", {});
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).not.toHaveProperty("userExternalId");
+  });
+
   it("maps non-JSON HTTP response to ToolResult error", async () => {
     fetchSpy.mockResolvedValue({
       status: 502,
@@ -359,5 +375,161 @@ describe("createFmlClient.callBackend — unified HTTP path", () => {
       error: "Try again later",
       code: "NEW_BACKEND_CODE",
     });
+  });
+});
+
+describe("createFmlClient context helpers — tool gateway path", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetSelectedOrg.mockReturnValue(undefined);
+    mockReadTokens.mockReturnValue(null);
+    mockResolveRepoFromCwd.mockReturnValue(null);
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("queryOrgs calls list-orgs over HTTP for JWT callers", async () => {
+    const orgs = [{ _id: "org1", name: "Acme", slug: "acme", repos: [] }];
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: orgs }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await expect(api.queryOrgs()).resolves.toEqual(orgs);
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      toolName: "list-orgs",
+      args: {},
+    });
+    expect(mockConvexQuery).not.toHaveBeenCalled();
+  });
+
+  it("queryOrgs calls list-orgs over HTTP for service-token callers", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({ ok: true, result: [{ _id: "org_service", name: "Svc" }] }),
+    } as Response);
+
+    const api = createFmlClient(SERVICE_TOKEN);
+    await expect(api.queryOrgs()).resolves.toEqual([
+      { _id: "org_service", name: "Svc" },
+    ]);
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    expect(mockConvexQuery).not.toHaveBeenCalled();
+  });
+
+
+  it("queryOrgs throws tool gateway errors instead of returning empty results", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () =>
+        JSON.stringify({ ok: false, error: "Access denied", code: "ACCESS_DENIED" }),
+    } as Response);
+
+    const api = createFmlClient(SERVICE_TOKEN);
+    await expect(api.queryOrgs()).rejects.toThrow("Access denied");
+  });
+
+  it("config helpers throw tool gateway errors instead of returning empty results", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify({ ok: false, error: "Backend exploded" }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await expect(api.listUserConfigSnapshots("acme")).rejects.toThrow(
+      "Backend exploded",
+    );
+  });
+
+  it("resolveRepo calls resolve-repo with explicit org", async () => {
+    const resolved = { repoId: "repo1", fullName: "acme/repo", orgSlug: "acme" };
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: resolved }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await expect(api.resolveRepo("acme", "acme/repo")).resolves.toEqual(resolved);
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      toolName: "resolve-repo",
+      args: { orgSlug: "acme", repoFullName: "acme/repo" },
+      org: "acme",
+    });
+  });
+
+  it("config snapshot helpers call their gateway tools", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: [] }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await api.listUserConfigSnapshots("acme");
+    await api.listRepoConfigSnapshots("acme", "acme/repo");
+
+    const bodies = fetchSpy.mock.calls.map((call: unknown) => {
+      const [, init] = call as [string, RequestInit];
+      return JSON.parse(init.body as string);
+    });
+    expect(bodies).toEqual([
+      {
+        toolName: "list-user-config-snapshots",
+        args: { orgSlug: "acme" },
+        org: "acme",
+      },
+      {
+        toolName: "list-repo-config-snapshots",
+        args: { orgSlug: "acme", repository: "acme/repo" },
+        org: "acme",
+      },
+    ]);
+  });
+
+  it("config snapshot detail helpers call their gateway tools", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: null }),
+    } as Response);
+
+    const api = createFmlClient(JWT_TOKEN);
+    await api.getUserConfigDetail("acme", "octo");
+    await api.getRepoConfigDetail("acme", "acme/repo");
+
+    const bodies = fetchSpy.mock.calls.map((call: unknown) => {
+      const [, init] = call as [string, RequestInit];
+      return JSON.parse(init.body as string);
+    });
+    expect(bodies).toEqual([
+      {
+        toolName: "get-user-config-snapshot",
+        args: { orgSlug: "acme", githubUsername: "octo" },
+        org: "acme",
+      },
+      {
+        toolName: "get-repo-config-snapshot",
+        args: { orgSlug: "acme", repository: "acme/repo" },
+        org: "acme",
+      },
+    ]);
   });
 });
