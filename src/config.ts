@@ -144,10 +144,10 @@ export const CONVEX_URL: string = (
   DEFAULT_PROD_URL
 ).replace(/\/$/, "");
 
-/** WorkOS API base URL */
+/** OAuth provider API base URL */
 export const WORKOS_API_URL = "https://api.workos.com";
 
-/** WorkOS authorization base URL */
+/** OAuth authorization base URL */
 export const WORKOS_AUTH_URL = "https://auth.fml.inc";
 
 /**

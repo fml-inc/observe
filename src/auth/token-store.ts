@@ -20,9 +20,16 @@ interface StoredAuth {
     name: string;
   };
   orgSlug?: string;
-  /** WorkOS client ID used to obtain these tokens (needed for refresh) */
+  /** OAuth client ID used to obtain these tokens (needed for refresh) */
   workosClientId?: string;
-  /** Token type: "oauth" (default) for WorkOS JWT, "service" for device flow tokens */
+  /**
+   * Token family marker for older stores.
+   *
+   * New human login paths (browser OAuth and device OAuth) store user
+   * credentials and omit this field. `"service"` is retained only for
+   * legacy opaque service-token-family sessions and explicit machine auth
+   * compatibility.
+   */
   tokenType?: "oauth" | "service";
 }
 
@@ -200,7 +207,7 @@ export async function getValidToken(opts?: {
     return null;
   }
 
-  // Stored token path (OAuth or device flow)
+  // Stored token path (OAuth user credentials or legacy service-family credentials)
   const stored = readTokens(envName);
   if (!stored) {
     console.error(
@@ -216,7 +223,8 @@ export async function getValidToken(opts?: {
     return stored.accessToken;
   }
 
-  // Device flow tokens: refresh via /api/tokens/refresh (same as sandbox tokens)
+  // Legacy stored service-family credentials refresh via /api/tokens/refresh.
+  // Current device OAuth login no longer writes tokenType: "service".
   if (stored.tokenType === "service") {
     const inflight = serviceRefreshPromises.get(key);
     if (inflight) return inflight;
@@ -246,7 +254,7 @@ export async function getValidToken(opts?: {
     }
   }
 
-  // OAuth tokens: refresh via WorkOS
+  // OAuth user tokens (browser or device): refresh via OAuth provider
   const inflight = oauthRefreshPromises.get(key);
   if (inflight) return inflight;
   const promise = refreshToken(stored, envName);

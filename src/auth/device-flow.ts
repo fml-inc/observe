@@ -1,8 +1,8 @@
 /**
- * WorkOS CLI Device Authorization Flow
+ * CLI OAuth Device Authorization Flow
  *
- * This uses WorkOS/AuthKit's OAuth 2.0 device authorization grant so device
- * login produces the same user credential family as browser OAuth login.
+ * This uses the OAuth 2.0 device authorization grant so device login produces
+ * the same user credential family as browser OAuth login.
  */
 
 import { WORKOS_API_URL, getSiteUrl } from "../config.js";
@@ -144,7 +144,7 @@ async function pollForTokens(
 }
 
 /**
- * Run WorkOS/AuthKit CLI device authorization.
+ * Run CLI OAuth device authorization.
  */
 export async function deviceLogin(): Promise<{
   email: string;
