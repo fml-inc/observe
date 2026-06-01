@@ -13,6 +13,7 @@ import {
 } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
+import { installAgentSkills } from "../agent-skills.js";
 import { resolveSyncTokenCommand } from "../sync/client.js";
 
 const CLAUDE_DIR = path.join(os.homedir(), ".claude");
@@ -212,8 +213,16 @@ export async function handleInstall(
   }
   console.log();
 
-  // 5. Auto-configure sync target (best-effort)
-  console.log("[5/5] Configuring sync target...");
+  // 5. Install user-level skills for agent CLIs that support them
+  console.log("[5/6] Installing agent skills...");
+  for (const result of installAgentSkills()) {
+    const suffix = result.reason ? ` (${result.reason})` : "";
+    console.log(`      ${result.target}: ${result.status}${suffix} — ${result.path}`);
+  }
+  console.log();
+
+  // 6. Auto-configure sync target (best-effort)
+  console.log("[6/6] Configuring sync target...");
   const existingTargets = listTargets();
   const existingProd = existingTargets.find((t) => t.url === DEFAULT_SYNC_URL);
   if (existingProd) {

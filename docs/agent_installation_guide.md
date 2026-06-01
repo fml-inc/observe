@@ -38,7 +38,7 @@ Installs the CLI binary. After this command, the `fml` binary is on `$PATH`. If 
 
 ### `fml install`
 
-Registers the plugin, skills, and hooks into whichever coding-agent CLIs are present (Claude Code, Codex, Gemini, Claude Desktop) and starts the local panopticon daemon on `127.0.0.1:4318`.
+Registers the plugin, FML agent skill, and hooks into supported coding-agent CLIs and starts the local panopticon daemon on `127.0.0.1:4318`. The FML skill is installed at user scope where standard skill locations are available, including Claude Code (`~/.claude/skills/fml`), Codex (`~/.codex/skills/fml`), and Pi (`~/.pi/agent/skills/fml`). Custom agent roots are honored via `FML_CLAUDE_DIR` / `CLAUDE_CONFIG_DIR`, `FML_CODEX_DIR` / `PANOPTICON_CODEX_DIR`, and `FML_PI_DIR`.
 
 Expected behavior in a sandbox:
 
@@ -109,7 +109,7 @@ The sandbox doesn't allow global installs as your user. Try `npm install -g @fml
 
 ## What's available after a successful install
 
-Once `fml doctor` is green, your coding-agent session has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
+Once `fml doctor` is green, supported agents also have an `fml` skill that explains the CLI catalog workflow and safe auth/setup checks. Claude Code additionally has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
 
 If you need a backend tool that is not exposed as a dedicated MCP tool, use the dynamic CLI catalog: `fml tools list --json`, `fml tools describe <tool-name> --json`, then `fml tools call <tool-name> --args '{"key":"value"}'`.
 
