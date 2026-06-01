@@ -80,6 +80,13 @@ export async function handleToolsList(opts: {
     return;
   }
 
+  console.log("Backend tools available to this FML session.\n");
+  console.log("Next steps:");
+  console.log("  fml tools describe <tool> --json        Inspect args/schema");
+  console.log("  fml tools call <tool> --args '{...}'   Run a tool");
+  console.log("  fml tools list --json                  Machine-readable catalog");
+  console.log("");
+
   const nameW = Math.min(
     40,
     Math.max(...descriptors.map((d) => d.name.length), 4),

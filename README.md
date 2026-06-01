@@ -55,6 +55,14 @@ These tools are available to Claude Code via the plugin:
 | `fml_list_skills` | Browse and load skills |
 | `list_repo_configs` | Team config snapshots |
 
+For agents or scripts that need backend tools not exposed as dedicated MCP tools yet, use the dynamic CLI catalog:
+
+```bash
+fml tools list --json
+fml tools describe <tool-name> --json
+fml tools call <tool-name> --args '{"key":"value"}'
+```
+
 ## CLI
 
 ```
@@ -71,8 +79,13 @@ fml status               Show auth and daemon status
 fml doctor               Check configuration and connectivity
 
 fml open                 Open FML dashboard in browser
-fml start                Start panopticon server
-fml stop                 Stop panopticon server
+fml start                Start local collection and sync
+fml stop                 Stop local collection and sync
+
+fml tools                List backend tools from the dynamic catalog
+fml tools list           List backend tools from the dynamic catalog
+fml tools describe <n>   Show a backend tool schema
+fml tools call <n>       Invoke a backend tool with JSON args
 
 fml activity             Activity summary
   --since <duration>     Time window (e.g. "24h", "7d")

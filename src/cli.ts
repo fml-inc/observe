@@ -15,8 +15,10 @@ import { handleOrg } from "./commands/org.js";
 import { handleOpen } from "./commands/open.js";
 import { handleStatus } from "./commands/status.js";
 import {
-  handleStart,
-  handleStop,
+  handleFmlStart,
+  handleFmlStop,
+  handlePanopticonStart,
+  handlePanopticonStop,
   handleSyncStart,
   handleSyncStop,
 } from "./commands/daemon.js";
@@ -93,39 +95,44 @@ if (
 
 const program = new Command()
   .name("fml")
-  .description("FML agent tools for Claude Code")
+  .description("FML CLI and agent tools")
   .version(
     typeof __FML_PLUGIN_VERSION__ !== "undefined"
       ? __FML_PLUGIN_VERSION__
       : "dev",
   );
 
-const tools = program
-  .command("tools", { hidden: true })
-  .description("List all available CLI commands (including hidden agent tools)")
-  .action(() => {
-    function formatCmd(cmd: typeof program, prefix = "") {
-      const name = prefix ? `${prefix} ${cmd.name()}` : cmd.name();
-      const args = cmd.registeredArguments
-        .map((a) => (a.required ? `<${a.name()}>` : `[${a.name()}]`))
-        .join(" ");
-      const opts = cmd.options
-        .filter(
-          (o) => !o.hidden && o.long !== "--help" && o.long !== "--version",
-        )
-        .map((o) => (o.mandatory ? o.flags : `[${o.flags}]`))
-        .join(" ");
-      const usage = [name, args, opts].filter(Boolean).join(" ");
-      return `${usage}\n  ${cmd.description()}`;
-    }
+function formatCommandInventory(cmd: typeof program, prefix = "") {
+  const name = prefix ? `${prefix} ${cmd.name()}` : cmd.name();
+  const args = cmd.registeredArguments
+    .map((a) => (a.required ? `<${a.name()}>` : `[${a.name()}]`))
+    .join(" ");
+  const opts = cmd.options
+    .filter((o) => !o.hidden && o.long !== "--help" && o.long !== "--version")
+    .map((o) => (o.mandatory ? o.flags : `[${o.flags}]`))
+    .join(" ");
+  const usage = [name, args, opts].filter(Boolean).join(" ");
+  return `${usage}\n  ${cmd.description()}`;
+}
 
+const tools = program
+  .command("tools")
+  .description("List backend tools available via the dynamic catalog")
+  .option("--category <category>", "Filter by category")
+  .option("--json", "Output as JSON")
+  .action((opts) => handleToolsList(opts));
+
+program
+  .command("commands", { hidden: true })
+  .description("List CLI commands, including hidden/internal commands")
+  .action(() => {
     const lines = program.commands
-      .filter((c) => c.name() !== "tools" && c.name() !== "help")
+      .filter((c) => c.name() !== "commands" && c.name() !== "help")
       .flatMap((c) => {
         if (c.commands.length > 0) {
-          return c.commands.map((s) => formatCmd(s, c.name()));
+          return c.commands.map((s) => formatCommandInventory(s, c.name()));
         }
-        return [formatCmd(c)];
+        return [formatCommandInventory(c)];
       });
     console.log(lines.join("\n\n"));
   });
@@ -154,7 +161,7 @@ tools
 
 program
   .command("install")
-  .description("Register plugin, hooks, and daemons")
+  .description("Set up FML for local agent use")
   .option(
     "--force",
     "Reinstall even if already set up (upgrades panopticon, re-registers plugin)",
@@ -163,7 +170,7 @@ program
 
 program
   .command("uninstall")
-  .description("Remove fml plugin, hooks, and optionally all data")
+  .description("Remove FML agent integrations and optionally local data")
   .option(
     "--target <target>",
     "Target CLI: claude, gemini, codex, claude-desktop, all",
@@ -195,7 +202,7 @@ program
 
 program
   .command("status")
-  .description("Show current auth and daemon status")
+  .description("Show auth and local service status")
   .action(() => handleStatus());
 
 program
@@ -212,8 +219,8 @@ program
 
 program
   .command("env")
-  .description("Show or switch environment (dev/prod)")
-  .argument("[target]", 'Environment name ("dev", "prod") or custom Convex URL')
+  .description("Show or switch FML backend environment")
+  .argument("[target]", "Environment name or backend URL")
   .action((target?: string) => {
     if (target) handleEnvSwitch(target);
     else handleEnvShow();
@@ -223,31 +230,31 @@ program
 
 program
   .command("start")
-  .description("Start the panopticon server")
-  .action(() => handleStart());
+  .description("Start FML local collection and sync")
+  .action(() => handleFmlStart());
 
 program
   .command("stop")
-  .description("Stop the panopticon server")
-  .action(() => handleStop());
+  .description("Stop FML local collection and sync")
+  .action(() => handleFmlStop());
 
 const panopticon = program
-  .command("panopticon")
+  .command("panopticon", { hidden: true })
   .description("Start or stop the panopticon server");
 
 panopticon
   .command("start")
   .description("Start the panopticon server")
-  .action(() => handleStart());
+  .action(() => handlePanopticonStart());
 
 panopticon
   .command("stop")
   .description("Stop the panopticon server")
-  .action(() => handleStop());
+  .action(() => handlePanopticonStop());
 
 // ── Sync subcommand ───────────────────────────────────────────────────────
 
-const sync = program.command("sync").description("Manage sync configuration");
+const sync = program.command("sync").description("Manage sync configuration and troubleshooting");
 
 sync
   .command("start")
@@ -338,8 +345,8 @@ program
 
 program
   .command("timeline")
-  .description("Get events for a session")
-  .argument("<session-id>", "Session ID")
+  .description("Get events for a session from `fml sessions`")
+  .argument("<session-id>", "Session ID from `fml sessions`")
   .option("--limit <n>", "Max events to return")
   .option("--offset <n>", "Events to skip")
   .action((sessionId, opts) => handleTimeline(sessionId, opts));
@@ -353,7 +360,7 @@ program
 
 program
   .command("search")
-  .description("Search across all sessions")
+  .description("Search FML agent sessions")
   .argument("<query>", "Text to search for")
   .option("--since <duration>", 'Time filter, e.g. "24h", "7d"')
   .option("--limit <n>", "Max results")

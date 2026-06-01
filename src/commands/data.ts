@@ -1,6 +1,6 @@
 /**
  * CLI wrappers for remote FML backend data queries.
- * Each command queries the FML Convex backend via the authenticated API client.
+ * Each command queries the FML backend via the authenticated API client.
  */
 
 import { getAuthenticatedClient } from "../fml-client.js";

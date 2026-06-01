@@ -111,6 +111,8 @@ The sandbox doesn't allow global installs as your user. Try `npm install -g @fml
 
 Once `fml doctor` is green, your coding-agent session has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
 
+If you need a backend tool that is not exposed as a dedicated MCP tool, use the dynamic CLI catalog: `fml tools list --json`, `fml tools describe <tool-name> --json`, then `fml tools call <tool-name> --args '{"key":"value"}'`.
+
 CLI commands you'll use most from an agent session:
 
 | Command | Use |
@@ -118,5 +120,8 @@ CLI commands you'll use most from an agent session:
 | `fml status` | Quick auth + daemon status. Cheaper than `doctor`. |
 | `fml org [slug]` | Show selected org, or switch to another. |
 | `fml sync status` | See what's queued for upload and whether it's flowing. |
+| `fml tools list --json` | Discover backend tools available through the dynamic catalog. |
+| `fml tools describe <tool> --json` | Inspect a backend tool's schema before calling it. |
+| `fml tools call <tool> --args '{...}'` | Invoke a backend tool that has no dedicated MCP wrapper yet. |
 | `fml activity --since 24h` | Recent activity summary in human-readable form. |
 | `fml logout` | Clear credentials. Use when switching users inside a sandbox. |

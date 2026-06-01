@@ -66,8 +66,8 @@ async function main() {
   // Ensure panopticon is running (includes sync, which handles config snapshots)
   if (!parsePanopticonRunning()) {
     try {
-      const { handleStart } = await import("../commands/daemon.js");
-      await handleStart();
+      const { handlePanopticonStart } = await import("../commands/daemon.js");
+      await handlePanopticonStart();
     } catch {
       console.error(
         "[fml] Warning: could not start panopticon. Run `fml start` manually",
