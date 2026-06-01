@@ -4,8 +4,8 @@ import { getSiteUrl, WORKOS_API_URL, WORKOS_AUTH_URL } from "../config.js";
 import { writeTokens } from "./token-store.js";
 
 /**
- * Fetch the WorkOS client ID from the active backend deployment.
- * This allows each environment to use its own WorkOS configuration.
+ * Fetch the OAuth client ID from the active backend deployment.
+ * This allows each environment to use its own OAuth configuration.
  */
 async function fetchWorkosClientId(): Promise<string> {
   const response = await fetch(`${getSiteUrl()}/api/auth/config`);
@@ -57,10 +57,10 @@ export async function canOpenBrowser(): Promise<boolean> {
 }
 
 /**
- * Run the WorkOS PKCE OAuth flow:
+ * Run the browser PKCE OAuth flow:
  * 1. Generate code_verifier + code_challenge
  * 2. Start local HTTP server for callback
- * 3. Open browser to WorkOS authorization URL
+ * 3. Open browser to the OAuth authorization URL
  * 4. Receive callback with authorization code
  * 5. Exchange code for tokens
  * 6. Store tokens
@@ -69,7 +69,7 @@ export async function login(): Promise<{
   email: string;
   name: string;
 }> {
-  // Fetch the WorkOS client ID from the active Convex deployment
+  // Fetch the OAuth client ID from the active backend deployment
   const clientId = await fetchWorkosClientId();
 
   // Generate PKCE code verifier and challenge

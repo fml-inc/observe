@@ -160,9 +160,8 @@ export function createFmlClient(token: string) {
     ): Promise<ToolResult> {
       try {
         // Unified CLI/MCP path: POST to the dual-auth HTTP endpoint for both
-        // service tokens and WorkOS/JWT user tokens. This keeps command
-        // handlers independent of token class and matches the backend's agent
-        // tool contract.
+        // service tokens and OAuth/JWT user tokens. This keeps command handlers
+        // independent of token class and matches the backend's agent tool contract.
         const body: Record<string, unknown> = { toolName, args };
 
         // Explicit org > stored org selection > repo-based inference.
@@ -217,9 +216,9 @@ export function createFmlClient(token: string) {
     async listTools(pluginVersion?: string): Promise<PublicToolDescriptor[]> {
       try {
         // Always use the HTTP catalog endpoint — it accepts both a service
-        // token and a user WorkOS JWT. A raw client.query rejects the user
-        // JWT (no `aud` claim, which Convex's client-protocol auth requires),
-        // so the httpAction path is the only one that works for both.
+        // token and a user OAuth JWT. A raw client.query rejects the user JWT
+        // (no `aud` claim, which Convex's client-protocol auth requires), so
+        // the httpAction path is the only one that works for both.
         const url = new URL(`${getSiteUrl()}/api/tools/list`);
         if (pluginVersion) url.searchParams.set("pluginVersion", pluginVersion);
         const res = await fetch(url.toString(), {
