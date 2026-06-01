@@ -53,7 +53,7 @@ export async function handleInstall(
   console.log(`Installing fml${force ? " (--force)" : ""}...\n`);
 
   // 1. Ensure panopticon is installed globally and up to date
-  console.log("[1/5] Setting up panopticon...");
+  console.log("[1/6] Setting up panopticon...");
   const { resolvePanopticonBin } = await import("../daemon-utils.js");
   let freshInstall = false;
   const bin = resolvePanopticonBin();
@@ -111,7 +111,7 @@ export async function handleInstall(
   console.log();
 
   // 2. Ensure fml-specific directories exist
-  console.log("[2/5] Creating fml directories...");
+  console.log("[2/6] Creating fml directories...");
   for (const dir of [FML_DATA_DIR, FML_LOG_DIR]) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -119,7 +119,7 @@ export async function handleInstall(
   console.log(`      ${FML_LOG_DIR}\n`);
 
   // 3. Ensure plugin manifest has the current version
-  console.log("[3/5] Writing plugin manifest...");
+  console.log("[3/6] Writing plugin manifest...");
   const pkgJson = readJsonFile(path.join(pluginRoot, "package.json"));
   const version = (pkgJson?.version as string) ?? "0.0.0-dev";
   const pluginManifestDir = path.join(pluginRoot, ".claude-plugin");
@@ -138,7 +138,7 @@ export async function handleInstall(
   console.log(`      Version: ${version}\n`);
 
   // 4. Register fml plugin in local marketplace + Claude Code settings
-  console.log("[4/5] Setting up fml plugin...");
+  console.log("[4/6] Setting up fml plugin...");
   fs.mkdirSync(path.join(MARKETPLACE_DIR, ".claude-plugin"), {
     recursive: true,
   });
