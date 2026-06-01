@@ -221,6 +221,16 @@ program
 
 // ── Panopticon server lifecycle ─────────────────────────────────────────────
 
+program
+  .command("start")
+  .description("Start the panopticon server")
+  .action(() => handleStart());
+
+program
+  .command("stop")
+  .description("Stop the panopticon server")
+  .action(() => handleStop());
+
 const panopticon = program
   .command("panopticon")
   .description("Start or stop the panopticon server");
