@@ -74,9 +74,12 @@ describe("handleToolsList", () => {
     exitSpy.mockRestore();
   });
 
-  it("renders human table by default", async () => {
+  it("renders human guidance and table by default", async () => {
     await handleToolsList({});
     const output = logSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+    expect(output).toContain("Backend tools available");
+    expect(output).toContain("fml tools describe <tool>");
+    expect(output).toContain("fml tools call <tool>");
     expect(output).toContain("integration-github");
     expect(output).toContain("integrations");
     expect(output).toContain("Query the GitHub integration");

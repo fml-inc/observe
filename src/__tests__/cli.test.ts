@@ -38,7 +38,7 @@ describe("CLI integration", () => {
     it("shows help with --help", () => {
       const { stdout, exitCode } = run("--help");
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("FML agent tools for Claude Code");
+      expect(stdout).toContain("FML CLI and agent tools");
       expect(stdout).toContain("install");
       expect(stdout).toContain("login");
       expect(stdout).toContain("logout");
@@ -47,7 +47,9 @@ describe("CLI integration", () => {
       expect(stdout).toContain("open");
       expect(stdout).toContain("start");
       expect(stdout).toContain("stop");
-      expect(stdout).toContain("panopticon");
+      expect(stdout).toContain("tools");
+      expect(stdout).not.toContain("commands");
+      expect(stdout).not.toMatch(/\n\s+panopticon\s/);
       expect(stdout).toContain("sync");
     });
 
@@ -68,13 +70,29 @@ describe("CLI integration", () => {
       expect(exitCode).not.toBe(0);
       expect(stdout).toContain("unknown command");
     });
+
+    it("shows dynamic backend tool commands in tools help", () => {
+      const { stdout, exitCode } = run("tools", "--help");
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("List backend tools available via the dynamic catalog");
+      expect(stdout).toContain("describe");
+      expect(stdout).toContain("call");
+    });
+
+    it("lists hidden/internal CLI commands via commands", () => {
+      const { stdout, exitCode } = run("commands");
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("tools list");
+      expect(stdout).toContain("tools describe");
+      expect(stdout).toContain("sync-token");
+    });
   });
 
   describe("install subcommand", () => {
     it("shows help with --help", () => {
       const { stdout, exitCode } = run("install", "--help");
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("Register plugin, hooks, and daemons");
+      expect(stdout).toContain("Set up FML for local agent use");
     });
   });
 

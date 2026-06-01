@@ -1,6 +1,6 @@
 import { listTargets } from "@fml-inc/panopticon/sync";
 import { getActiveEnv, writeEnvConfig } from "../config.js";
-import { handleStop, handleStart } from "./daemon.js";
+import { handlePanopticonStop, handlePanopticonStart } from "./daemon.js";
 
 /**
  * Show the active environment.
@@ -31,9 +31,9 @@ export async function handleEnvSwitch(target: string): Promise<void> {
   const convexUrl = match.url.replace(".convex.site", ".convex.cloud");
   console.log(`Switched to ${target}: ${convexUrl}`);
 
-  console.log("\nRestarting daemons...");
-  handleStop();
-  await handleStart();
+  console.log("\nRestarting local collection...");
+  handlePanopticonStop();
+  await handlePanopticonStart();
   console.log(
     "MCP server will pick up the change on next Claude Code session.",
   );
