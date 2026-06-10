@@ -199,9 +199,9 @@ export function upgradeSyncTargetAfterLogin(opts?: {
  * Single-org users get auto-selected; multi-org users get the first org
  * (can be changed later via `fml org`).
  */
-async function selectOrg(): Promise<void> {
+async function selectOrg(envName?: string): Promise<void> {
   try {
-    const token = await getValidToken();
+    const token = await getValidToken({ env: envName });
     if (!token) return;
 
     const api = createFmlClient(token);
@@ -211,11 +211,11 @@ async function selectOrg(): Promise<void> {
     // Preserve the user's existing selection if it's still a valid org —
     // only fall back to the first org when nothing valid is selected. Logging
     // in (or re-logging-in) should not silently reset a prior `fml org <slug>`.
-    const current = getSelectedOrg();
+    const current = getSelectedOrg(envName);
     const org =
       (current && orgs.find((o) => (o.slug ?? o.name) === current)) || orgs[0];
     const slug = org.slug ?? org.name;
-    setSelectedOrg(slug);
+    setSelectedOrg(slug, envName);
     console.log(`Selected org: ${org.name} (${slug})`);
   } catch {
     // Non-fatal — org selection can happen later via `fml org`
@@ -241,7 +241,7 @@ export async function runServiceTokenLogin(
     throw new Error("Service token login failed.");
   }
 
-  await selectOrg();
+  await selectOrg(envName);
   upgradeSyncTargetAfterLogin({ forceTokenCommand: true });
 
   console.log("Logged in with FML service token.");
@@ -256,8 +256,12 @@ export async function handleServiceTokenLogin(
     await runServiceTokenLogin(refreshToken);
     process.exit(0);
   } catch (err: unknown) {
-    Sentry.captureException(err);
     const msg = err instanceof Error ? err.message : String(err);
+    if (msg === "Canceled") {
+      console.error("Login canceled.");
+      process.exit(1);
+    }
+    Sentry.captureException(err);
     console.error(`Login failed: ${msg}`);
     process.exit(1);
   }
@@ -292,7 +296,7 @@ export async function handleLogin(opts?: {
     }
 
     await linkGitHubIdentity();
-    await selectOrg();
+    await selectOrg(envName);
     upgradeSyncTargetAfterLogin();
 
     console.log("You're all set! Restart Claude Code to use FML tools.");
@@ -313,7 +317,7 @@ export async function handleLogin(opts?: {
     console.log(`\nLogged in as ${result.name} (${result.email})`);
 
     await linkGitHubIdentity();
-    await selectOrg();
+    await selectOrg(envName);
     upgradeSyncTargetAfterLogin();
 
     console.log("You're all set! Restart Claude Code to use FML tools.");

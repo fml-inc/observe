@@ -281,6 +281,26 @@ describe("createFmlClient.callBackend — unified HTTP path", () => {
     );
   });
 
+  it("does not inherit userExternalId from stored OAuth auth for service-token callers", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: "ok" }),
+    } as Response);
+    mockReadTokens.mockReturnValue({
+      tokenType: "oauth",
+      user: { id: "user_oauth", email: "oauth@example.com", name: "OAuth User" },
+    });
+
+    const api = createFmlClient(SERVICE_TOKEN);
+    await api.callBackend("get-engineering-activity", {});
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).not.toHaveProperty(
+      "userExternalId",
+    );
+  });
+
   it("preserves real device-flow service-token user ids", async () => {
     fetchSpy.mockResolvedValue({
       ok: true,

@@ -6,6 +6,7 @@ const mockGetValidToken = vi.fn();
 vi.mock("../../auth/token-store.js", () => ({
   readTokens: (...args: unknown[]) => mockReadTokens(...args),
   getValidToken: (...args: unknown[]) => mockGetValidToken(...args),
+  SERVICE_TOKEN_LOGIN_USER_ID: "service-token",
 }));
 
 import { handleStatus } from "../../commands/status.js";
@@ -79,5 +80,27 @@ describe("status command", () => {
     const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
     expect(output).toContain("Auth:  service token");
     expect(output).not.toContain("User:  service");
+  });
+
+  it("shows legacy device-flow service tokens as the real user", async () => {
+    mockReadTokens.mockReturnValue({
+      accessToken: "fml_st_access",
+      refreshToken: "fml_srt_refresh",
+      expiresAt: Date.now() + 3_600_000,
+      user: {
+        id: "user_real",
+        email: "real@example.com",
+        name: "Real User",
+      },
+      tokenType: "service",
+    });
+    mockGetValidToken.mockResolvedValue("fml_st_access");
+
+    await handleStatus();
+
+    const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+    expect(output).toContain("Real User");
+    expect(output).toContain("real@example.com");
+    expect(output).not.toContain("Auth:  service token");
   });
 });

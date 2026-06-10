@@ -21,7 +21,9 @@ vi.mock("../../sentry.js", () => ({
 
 import {
   SERVICE_TOKEN_LOGIN_USER_ID,
+  getSelectedOrg,
   readTokens,
+  setSelectedOrg,
   storeServiceRefreshToken,
   writeTokens,
   getValidToken,
@@ -62,6 +64,19 @@ describe("token-store", () => {
       writeTokens(auth);
       const read = readTokens();
       expect(read).toEqual(auth);
+    });
+
+    it("reads and writes selected org in the env-specific auth store", () => {
+      writeTokens(makeAuth({ orgSlug: "default-org" }));
+      writeTokens(makeAuth({ orgSlug: "dev-org" }), "dev");
+
+      expect(getSelectedOrg()).toBe("default-org");
+      expect(getSelectedOrg("dev")).toBe("dev-org");
+
+      setSelectedOrg("new-dev-org", "dev");
+
+      expect(getSelectedOrg()).toBe("default-org");
+      expect(getSelectedOrg("dev")).toBe("new-dev-org");
     });
   });
 

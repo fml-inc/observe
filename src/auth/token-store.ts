@@ -60,14 +60,14 @@ export function writeTokens(auth: StoredAuth, envName?: string): void {
   });
 }
 
-export function getSelectedOrg(): string | null {
-  return readTokens()?.orgSlug ?? null;
+export function getSelectedOrg(envName?: string): string | null {
+  return readTokens(envName)?.orgSlug ?? null;
 }
 
-export function setSelectedOrg(orgSlug: string): void {
-  const stored = readTokens();
+export function setSelectedOrg(orgSlug: string, envName?: string): void {
+  const stored = readTokens(envName);
   if (!stored) return;
-  writeTokens({ ...stored, orgSlug });
+  writeTokens({ ...stored, orgSlug }, envName);
 }
 
 // ── Service Token Refresh (sandbox fml_srt_* → fml_st_*) ────────────────────
