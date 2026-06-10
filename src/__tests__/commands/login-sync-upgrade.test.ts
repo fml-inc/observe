@@ -4,6 +4,8 @@ import type { SyncTarget } from "@fml-inc/panopticon/sync";
 const mockAddTarget = vi.fn();
 const mockLoadSyncConfig = vi.fn();
 const mockSaveSyncConfig = vi.fn();
+const mockStoreServiceRefreshToken = vi.fn();
+const mockCreateFmlClient = vi.fn();
 
 vi.mock("@fml-inc/panopticon/sync", () => ({
   addTarget: (...args: unknown[]) => mockAddTarget(...args),
@@ -19,9 +21,14 @@ vi.mock("../../auth/oauth.js", () => ({
 vi.mock("../../auth/device-flow.js", () => ({ deviceLogin: vi.fn() }));
 vi.mock("../../auth/token-store.js", () => ({
   getValidToken: vi.fn(),
+  SERVICE_TOKEN_LOGIN_USER_ID: "service-token",
   setSelectedOrg: vi.fn(),
+  storeServiceRefreshToken: (...args: unknown[]) =>
+    mockStoreServiceRefreshToken(...args),
 }));
-vi.mock("../../fml-client.js", () => ({ createFmlClient: vi.fn() }));
+vi.mock("../../fml-client.js", () => ({
+  createFmlClient: (...args: unknown[]) => mockCreateFmlClient(...args),
+}));
 vi.mock("../../sync/client.js", () => ({ resolveGitHubToken: vi.fn() }));
 vi.mock("../../sentry.js", () => ({ Sentry: { captureException: vi.fn() } }));
 const mockGetActiveEnv = vi.fn(() => ({
@@ -37,7 +44,10 @@ vi.mock("../../config.js", async () => {
   };
 });
 
-import { upgradeSyncTargetAfterLogin } from "../../commands/login.js";
+import {
+  runServiceTokenLogin,
+  upgradeSyncTargetAfterLogin,
+} from "../../commands/login.js";
 
 describe("upgradeSyncTargetAfterLogin", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -126,6 +136,25 @@ describe("upgradeSyncTargetAfterLogin", () => {
     expect(mockAddTarget).not.toHaveBeenCalled();
   });
 
+  it("forces an explicit service-token login over an unrelated tokenCommand", async () => {
+    const target: SyncTarget = {
+      name: "fml",
+      url: "https://x.convex.site",
+      tokenCommand: "gh auth token",
+    };
+    mockLoadSyncConfig.mockReturnValue({ targets: [target] });
+    mockStoreServiceRefreshToken.mockResolvedValue(true);
+
+    await runServiceTokenLogin("fml_srt_refresh");
+
+    expect(mockStoreServiceRefreshToken).toHaveBeenCalledWith(
+      "fml_srt_refresh",
+      { env: "fml" },
+    );
+    expect(target.tokenCommand).toBe("fml sync-token --env fml");
+    expect(mockSaveSyncConfig).toHaveBeenCalledWith({ targets: [target] });
+  });
+
   it("leaves an existing static token untouched", () => {
     const target: SyncTarget = {
       name: "fml",
@@ -139,6 +168,21 @@ describe("upgradeSyncTargetAfterLogin", () => {
     expect(target.token).toBe("static_xyz");
     expect(target.tokenCommand).toBeUndefined();
     expect(mockSaveSyncConfig).not.toHaveBeenCalled();
+  });
+
+  it("removes a static token when service-token login is explicit", () => {
+    const target: SyncTarget = {
+      name: "fml",
+      url: "https://x.convex.site",
+      token: "static_xyz",
+    };
+    mockLoadSyncConfig.mockReturnValue({ targets: [target] });
+
+    upgradeSyncTargetAfterLogin({ forceTokenCommand: true });
+
+    expect(target.token).toBeUndefined();
+    expect(target.tokenCommand).toBe("fml sync-token --env fml");
+    expect(mockSaveSyncConfig).toHaveBeenCalledWith({ targets: [target] });
   });
 
   it("refuses to write a tokenCommand when the env name is unsafe", () => {

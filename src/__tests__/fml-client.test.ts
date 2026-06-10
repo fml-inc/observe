@@ -15,6 +15,7 @@ vi.mock("../sentry.js", () => ({
 const mockReadTokens = vi.fn();
 const mockGetSelectedOrg = vi.fn<() => string | undefined>(() => undefined);
 vi.mock("../auth/token-store.js", () => ({
+  SERVICE_TOKEN_LOGIN_USER_ID: "service-token",
   readTokens: () => mockReadTokens(),
   getValidToken: vi.fn(),
   getSelectedOrg: () => mockGetSelectedOrg(),
@@ -257,6 +258,46 @@ describe("createFmlClient.callBackend — unified HTTP path", () => {
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toMatchObject({
       userExternalId: "env-user",
+    });
+  });
+
+  it("omits synthetic service-token login user ids", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: "ok" }),
+    } as Response);
+    mockReadTokens.mockReturnValue({
+      tokenType: "service",
+      user: { id: "service-token", email: "service-token", name: "service" },
+    });
+
+    const api = createFmlClient(SERVICE_TOKEN);
+    await api.callBackend("get-engineering-activity", {});
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).not.toHaveProperty(
+      "userExternalId",
+    );
+  });
+
+  it("preserves real device-flow service-token user ids", async () => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, result: "ok" }),
+    } as Response);
+    mockReadTokens.mockReturnValue({
+      tokenType: "service",
+      user: { id: "user_real", email: "user@example.com", name: "User" },
+    });
+
+    const api = createFmlClient(SERVICE_TOKEN);
+    await api.callBackend("get-engineering-activity", {});
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      userExternalId: "user_real",
     });
   });
 

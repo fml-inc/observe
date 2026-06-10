@@ -16,7 +16,11 @@ export async function handleStatus(): Promise<void> {
   const tokenValid = await getValidToken();
 
   console.log("Authentication:");
-  console.log(`  User:  ${tokens.user.name} (${tokens.user.email})`);
+  if (tokens.tokenType === "service") {
+    console.log("  Auth:  service token");
+  } else {
+    console.log(`  User:  ${tokens.user.name} (${tokens.user.email})`);
+  }
   console.log(
     `  Token: ${tokenValid ? "valid" : "expired (needs refresh/re-login)"}`,
   );

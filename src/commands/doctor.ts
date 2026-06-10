@@ -72,9 +72,12 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     token = await getValidToken();
     if (token) {
       const stored = readTokens();
-      const detail = stored?.user?.email
-        ? `Logged in as ${stored.user.email}`
-        : "Token present";
+      const detail =
+        stored?.tokenType === "service"
+          ? "Service token configured"
+          : stored?.user?.email
+            ? `Logged in as ${stored.user.email}`
+            : "Token present";
       pushAndReport({ label: "Auth", status: "ok", detail }, spinner);
     } else {
       pushAndReport(

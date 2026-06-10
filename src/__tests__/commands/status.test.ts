@@ -63,4 +63,21 @@ describe("status command", () => {
     const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
     expect(output).toContain("expired");
   });
+
+  it("shows service-token auth without a fake user identity", async () => {
+    mockReadTokens.mockReturnValue({
+      accessToken: "fml_st_access",
+      refreshToken: "fml_srt_refresh",
+      expiresAt: Date.now() + 3_600_000,
+      user: { id: "service-token", email: "service-token", name: "service" },
+      tokenType: "service",
+    });
+    mockGetValidToken.mockResolvedValue("fml_st_access");
+
+    await handleStatus();
+
+    const output = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
+    expect(output).toContain("Auth:  service token");
+    expect(output).not.toContain("User:  service");
+  });
 });

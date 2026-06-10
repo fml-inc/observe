@@ -20,7 +20,9 @@ vi.mock("../../sentry.js", () => ({
 }));
 
 import {
+  SERVICE_TOKEN_LOGIN_USER_ID,
   readTokens,
+  storeServiceRefreshToken,
   writeTokens,
   getValidToken,
 } from "../../auth/token-store.js";
@@ -36,12 +38,16 @@ function makeAuth(overrides: Record<string, unknown> = {}) {
 }
 
 describe("token-store", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn> | null = null;
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fml-test-"));
     vi.unstubAllEnvs();
+    fetchSpy = null;
   });
 
   afterEach(() => {
+    fetchSpy?.mockRestore();
     vi.unstubAllEnvs();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -131,6 +137,59 @@ describe("token-store", () => {
       expect(await getValidToken({ env: "dev" })).toBe("dev_tok");
       expect(await getValidToken({ env: "prod" })).toBe("prod_tok");
       expect(await getValidToken()).toBe("default_tok");
+    });
+  });
+
+  describe("storeServiceRefreshToken", () => {
+    it("refreshes and stores a pasted service refresh token", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          accessToken: "fml_st_access",
+          expiresAt: Date.now() + 3_600_000,
+        }),
+      } as Response);
+
+      const stored = await storeServiceRefreshToken(" fml_srt_refresh ", {
+        env: "service",
+      });
+
+      expect(stored).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://test.convex.site/api/tokens/refresh",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer fml_srt_refresh",
+          }),
+        }),
+      );
+      expect(readTokens("service")).toMatchObject({
+        accessToken: "fml_st_access",
+        refreshToken: "fml_srt_refresh",
+        user: {
+          id: SERVICE_TOKEN_LOGIN_USER_ID,
+          email: "service-token",
+          name: "FML service token",
+        },
+        tokenType: "service",
+      });
+      await expect(getValidToken({ env: "service" })).resolves.toBe(
+        "fml_st_access",
+      );
+    });
+
+    it("rejects non-refresh service tokens", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch");
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const stored = await storeServiceRefreshToken("fml_st_access");
+
+      expect(stored).toBe(false);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("fml_srt_"));
+      errorSpy.mockRestore();
     });
   });
 });
