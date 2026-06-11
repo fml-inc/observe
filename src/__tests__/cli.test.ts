@@ -48,6 +48,7 @@ describe("CLI integration", () => {
       expect(stdout).toContain("start");
       expect(stdout).toContain("stop");
       expect(stdout).toContain("tools");
+      expect(stdout).toContain("tour");
       expect(stdout).not.toContain("commands");
       expect(stdout).not.toMatch(/\n\s+panopticon\s/);
       expect(stdout).toContain("sync");
@@ -117,6 +118,41 @@ describe("CLI integration", () => {
       // logout is safe to call — it just tries to delete a file
       const { exitCode } = run("logout");
       expect(exitCode).toBe(0);
+    });
+  });
+
+  describe("tour command", () => {
+    it("prints the whole tour on the non-TTY path", () => {
+      // execFileSync pipes stdio, so this exercises the non-interactive
+      // fallback AND the dist-relative ../tour lesson resolution that every
+      // installed copy depends on.
+      const { stdout, exitCode } = run("tour");
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("Lesson 1/8: What is FML?");
+      expect(stdout).toContain("Lesson 8/8");
+    });
+
+    it("references only resolvable CLI commands from lesson try-it lines", () => {
+      // Lessons advertise copy-paste commands; a rename (hidden commands
+      // included) must fail here, not in a user's onboarding session.
+      const tourDir = path.resolve(__dirname, "../../tour");
+      const tryClis = fs
+        .readdirSync(tourDir)
+        .filter((f) => f.endsWith(".md"))
+        .map((f) => fs.readFileSync(path.join(tourDir, f), "utf-8"))
+        .map((raw) => raw.match(/^tryCli:\s*(.+)$/m)?.[1])
+        .filter((cmd): cmd is string => Boolean(cmd));
+      expect(tryClis.length).toBeGreaterThan(0);
+      for (const cmd of tryClis) {
+        const words = cmd.split(" ").slice(1); // drop the leading "fml"
+        const subcommand = [];
+        for (const word of words) {
+          if (word.startsWith("-")) break;
+          subcommand.push(word);
+        }
+        const { exitCode } = run(...subcommand, "--help");
+        expect(exitCode, `tryCli not resolvable: ${cmd}`).toBe(0);
+      }
     });
   });
 });
