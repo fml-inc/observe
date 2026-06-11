@@ -1,0 +1,4 @@
+# Lesson markdown is parsed and rendered by the tour; CRLF checkouts must
+# not reach the renderer (and the npm tarball always ships LF).
+*.md text eol=lf
+*.png binary

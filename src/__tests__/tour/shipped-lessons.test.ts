@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { stripVTControlCharacters as stripAnsi } from "node:util";
 import { defaultLessonsDir, loadLessons } from "../../tour/lessons.js";
 import { renderLesson } from "../../tour/render.js";
-
-// eslint-disable-next-line no-control-regex -- stripping ANSI escapes requires matching
-const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 describe("shipped tour lessons", () => {
   // Using defaultLessonsDir() doubles as a test of the path resolver
@@ -38,8 +36,9 @@ describe("shipped tour lessons", () => {
   it("renders without stray markers at every pager width", () => {
     // Inline spans must never straddle a wrap point: a split span leaves
     // literal backticks / ** that mis-pair and bleed color into prose.
+    // 40 is the runtime floor in src/commands/tour.ts; sweep from there.
     for (const [i, lesson] of lessons.entries()) {
-      for (let width = 60; width <= 100; width++) {
+      for (let width = 40; width <= 100; width++) {
         const out = stripAnsi(renderLesson(lesson, i, lessons.length, width));
         expect(out, `${lesson.slug} at width ${width}`).not.toContain("`");
         expect(out, `${lesson.slug} at width ${width}`).not.toContain("**");
