@@ -518,12 +518,16 @@ export function registerTools(server: McpServer): void {
 
   server.tool(
     "search_engineering_sessions",
-    "Search across agent sessions by text. Searches prompts, tool names, and event payloads.",
+    "Search across agent sessions by text. Searches derived summaries, provenance, prompts, tool names, event payloads, files, PR aliases, and commit aliases. Supports filtering by GitHub username.",
     {
       query: z.string().describe("Text to search for. Case-insensitive."),
       timeRange: z.enum(["1h", "6h", "24h", "7d", "30d"]).optional(),
       since: z.string().optional(),
       until: z.string().optional(),
+      githubUsername: z
+        .string()
+        .optional()
+        .describe("Filter to sessions from a specific GitHub username."),
       target: z
         .enum(["claude", "codex", "gemini", "mastra"])
         .optional()

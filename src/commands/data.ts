@@ -61,11 +61,17 @@ export async function handleSpending(opts: {
 
 export async function handleSearch(
   query: string,
-  opts: { since?: string; limit?: string },
+  opts: {
+    since?: string;
+    limit?: string;
+    user?: string;
+    githubUsername?: string;
+  },
 ): Promise<void> {
   await queryBackend("search-engineering-sessions", {
     query,
     timeRange: opts.since ?? "7d",
+    githubUsername: opts.githubUsername ?? opts.user,
     limit: opts.limit ? parseInt(opts.limit, 10) : undefined,
   });
 }

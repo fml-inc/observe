@@ -38,22 +38,22 @@ The guide covers: `npm install -g @fml-inc/fml` → `fml install` → `fml login
 
 These tools are available to Claude Code via the plugin:
 
-| Tool | Description |
-|------|-------------|
-| `get_engineering_activity` | Activity summary — sessions, prompts, tools, costs |
-| `list_engineering_sessions` | List recent sessions with stats |
-| `search_engineering_sessions` | Search across all sessions |
-| `get_session_timeline` | Messages and tool calls for a session |
-| `get_session_turns` | Per-turn token usage for a session |
-| `get_ai_spending` | Token usage and cost breakdowns |
-| `whoami` | Current auth and org status |
-| `fml_list_integrations` | Connected integrations (Slack, GitHub, Linear, Sentry, etc.) |
-| `fml_query_*` | Query connected integrations directly |
-| `fml_list_messages` | Conversation messages |
-| `fml_search_analysis` | Search codebase analysis results |
-| `fml_run_analysis_workflow` | Run deep analysis workflows |
-| `fml_list_skills` | Browse and load skills |
-| `list_repo_configs` | Team config snapshots |
+| Tool                          | Description                                                  |
+| ----------------------------- | ------------------------------------------------------------ |
+| `get_engineering_activity`    | Activity summary — sessions, prompts, tools, costs           |
+| `list_engineering_sessions`   | List recent sessions with stats                              |
+| `search_engineering_sessions` | Search across all sessions                                   |
+| `get_session_timeline`        | Messages and tool calls for a session                        |
+| `get_session_turns`           | Per-turn token usage for a session                           |
+| `get_ai_spending`             | Token usage and cost breakdowns                              |
+| `whoami`                      | Current auth and org status                                  |
+| `fml_list_integrations`       | Connected integrations (Slack, GitHub, Linear, Sentry, etc.) |
+| `fml_query_*`                 | Query connected integrations directly                        |
+| `fml_list_messages`           | Conversation messages                                        |
+| `fml_search_analysis`         | Search codebase analysis results                             |
+| `fml_run_analysis_workflow`   | Run deep analysis workflows                                  |
+| `fml_list_skills`             | Browse and load skills                                       |
+| `list_repo_configs`           | Team config snapshots                                        |
 
 For agents or scripts that need backend tools not exposed as dedicated MCP tools yet, use the dynamic CLI catalog:
 
@@ -93,6 +93,7 @@ fml sessions             List recent sessions
 fml timeline <id>        Events for a session
 fml spending             Token usage and cost breakdown
 fml search <query>       Search across sessions
+  --user <username>      Filter search results by GitHub username
 
 fml sync setup           Configure sync targets
 fml sync list            List sync targets
