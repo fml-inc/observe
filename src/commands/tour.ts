@@ -13,15 +13,17 @@ const CLEAR = "\x1b[2J\x1b[H";
 
 // Keys that advance — mirrored from the reducer so "finished the last
 // lesson" (advance past the end) is distinguishable from "quit" (q/escape).
-const ADVANCE_KEYS = new Set(["return", "space", "right", "n"]);
+// pager.test.ts asserts this set stays identical to the reducer's behavior.
+export const ADVANCE_KEYS = new Set(["return", "space", "right", "n"]);
 
 const CLOSING_HINT = "Run `fml tour` anytime, or `/fml:tour` in Claude Code.";
 
 function width(): number {
   // columns can be 0 on PTYs that never set a window size — treat that as
-  // unknown; floor the result so narrow panes stay readable.
+  // unknown. Otherwise render at the terminal's real width (a 30-column
+  // pane must wrap at 30, not at some larger floor), bounded to [20, 100].
   const cols = process.stdout.columns || 80;
-  return Math.max(Math.min(cols, 100), 40);
+  return Math.min(Math.max(cols, 20), 100);
 }
 
 function draw(lessons: TourLesson[], state: PagerState): void {
@@ -71,9 +73,16 @@ export async function handleTour(): Promise<void> {
   const restore = () => {
     if (restored) return;
     restored = true;
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
-    process.stdout.write(EXIT_ALT);
+    // A dead TTY (SIGHUP after the terminal closes) can throw from any of
+    // these; never let that escape a signal handler — there is nothing left
+    // to restore onto anyway.
+    try {
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+      process.stdout.write(EXIT_ALT);
+    } catch {
+      // terminal is gone
+    }
   };
   process.once("exit", restore);
 
@@ -81,11 +90,26 @@ export async function handleTour(): Promise<void> {
     draw(lessons, state);
 
     await new Promise<void>((resolve, reject) => {
-      const onResize = () => draw(lessons, state);
+      const fail = (err: unknown) => {
+        // Reject (rather than crash the emitter) so the CLI's central
+        // error handling sees the failure after the terminal is restored.
+        teardown();
+        reject(err instanceof Error ? err : new Error(String(err)));
+      };
+
+      const onResize = () => {
+        try {
+          draw(lessons, state);
+        } catch (err) {
+          fail(err);
+        }
+      };
 
       const teardown = () => {
-        // Mark exited so keypresses already parsed from the same stdin chunk
-        // (e.g. a pasted "q2") can't redraw onto the restored main screen.
+        // Belt-and-braces: the .off() below already stops keys buffered in
+        // the same stdin chunk (readline emits one event per key, and the
+        // emitter resolves listeners per emit); the exited mark additionally
+        // inert-izes anything still holding a reference to the handler.
         state = { ...state, exited: true };
         process.stdin.off("keypress", onKeypress);
         process.stdout.off("resize", onResize);
@@ -126,10 +150,7 @@ export async function handleTour(): Promise<void> {
             draw(lessons, state);
           }
         } catch (err) {
-          // Reject (rather than crash the emitter) so the CLI's central
-          // error handling sees the failure after the terminal is restored.
-          teardown();
-          reject(err instanceof Error ? err : new Error(String(err)));
+          fail(err);
         }
       };
 

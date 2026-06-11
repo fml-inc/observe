@@ -113,7 +113,10 @@ function parseListItems(block: string): ListItem[] {
 
 /**
  * Renders the markdown subset used by tour lessons: paragraphs, `- ` bullets,
- * numbered lists, and ``` fences. Anything fancier is not supported on purpose.
+ * numbered lists, and ``` fences. Anything fancier is not supported on
+ * purpose. Fences must be unindented and closed (an indented fence under a
+ * list item folds into the bullet text; an unclosed fence swallows the rest
+ * of the lesson) — shipped-lessons tests enforce both for packaged content.
  */
 export function renderMarkdown(md: string, width: number): string {
   const out: string[] = [];

@@ -36,12 +36,39 @@ describe("shipped tour lessons", () => {
   it("renders without stray markers at every pager width", () => {
     // Inline spans must never straddle a wrap point: a split span leaves
     // literal backticks / ** that mis-pair and bleed color into prose.
-    // 40 is the runtime floor in src/commands/tour.ts; sweep from there.
+    // 20 is the runtime floor in src/commands/tour.ts; sweep from there.
     for (const [i, lesson] of lessons.entries()) {
-      for (let width = 40; width <= 100; width++) {
+      for (let width = 20; width <= 100; width++) {
         const out = stripAnsi(renderLesson(lesson, i, lessons.length, width));
         expect(out, `${lesson.slug} at width ${width}`).not.toContain("`");
         expect(out, `${lesson.slug} at width ${width}`).not.toContain("**");
+      }
+    }
+  });
+
+  it("every code fence is closed and unindented", () => {
+    // The renderer's documented subset: an unclosed fence swallows the rest
+    // of the lesson; an indented fence folds into the surrounding text.
+    for (const lesson of lessons) {
+      const lines = lesson.body.split("\n");
+      const fences = lines.filter((l) => l.startsWith("```"));
+      expect(fences.length % 2, `${lesson.slug}: unclosed fence`).toBe(0);
+      const indented = lines.filter((l) => /^\s+```/.test(l));
+      expect(indented, `${lesson.slug}: indented fence`).toEqual([]);
+    }
+  });
+
+  it("inline spans fit within the supported width band", () => {
+    // Atomic spans never split, so a span longer than the wrap width
+    // overflows the line. Keep prose spans (fences excluded — they don't
+    // wrap) short enough for narrow terminals.
+    for (const lesson of lessons) {
+      const prose = lesson.body.replace(/```[^]*?```/g, "");
+      for (const span of prose.match(/\*\*[^*\n]+\*\*|`[^`\n]+`/g) ?? []) {
+        expect(
+          span.length,
+          `${lesson.slug}: span too long to wrap: ${span}`,
+        ).toBeLessThanOrEqual(40);
       }
     }
   });

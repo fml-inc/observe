@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { reducePager, type PagerState } from "../../tour/pager.js";
+import { ADVANCE_KEYS } from "../../commands/tour.js";
 
 const at = (index: number): PagerState => ({ index, exited: false });
 
@@ -42,5 +43,20 @@ describe("reducePager (8 lessons)", () => {
   it("is inert after exit", () => {
     const done = { index: 2, exited: true };
     expect(reducePager(done, TOTAL, "return")).toEqual(done);
+  });
+
+  it("ADVANCE_KEYS mirrors the reducer's advance behavior exactly", () => {
+    // tour.ts derives "finished vs quit" from this set; if the reducer
+    // gains or loses an advance key without the mirror updating, finishing
+    // the tour prints the wrong closing line. Digits are excluded from the
+    // probe: they are jump keys, and a jump can coincide with advancing.
+    const probeKeys = [
+      "return", "space", "right", "left", "up", "down", "escape", "tab",
+      ...Array.from("abcdefghijklmnopqrstuvwxyz"),
+    ];
+    for (const key of probeKeys) {
+      const advances = reducePager(at(3), TOTAL, key).index === 4;
+      expect(advances, `key "${key}"`).toBe(ADVANCE_KEYS.has(key));
+    }
   });
 });

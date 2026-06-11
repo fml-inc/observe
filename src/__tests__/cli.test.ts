@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { loadLessons } from "../tour/lessons.js";
 
 const CLI_PATH = path.resolve(__dirname, "../../dist/cli.js");
 
@@ -135,12 +136,10 @@ describe("CLI integration", () => {
     it("references only resolvable CLI commands from lesson try-it lines", () => {
       // Lessons advertise copy-paste commands; a rename (hidden commands
       // included) must fail here, not in a user's onboarding session.
-      const tourDir = path.resolve(__dirname, "../../tour");
-      const tryClis = fs
-        .readdirSync(tourDir)
-        .filter((f) => f.endsWith(".md"))
-        .map((f) => fs.readFileSync(path.join(tourDir, f), "utf-8"))
-        .map((raw) => raw.match(/^tryCli:\s*(.+)$/m)?.[1])
+      // Use the real parser so the probe sees exactly what the tour ships.
+      const { lessons } = loadLessons(path.resolve(__dirname, "../../tour"));
+      const tryClis = lessons
+        .map((lesson) => lesson.tryCli)
         .filter((cmd): cmd is string => Boolean(cmd));
       expect(tryClis.length).toBeGreaterThan(0);
       for (const cmd of tryClis) {

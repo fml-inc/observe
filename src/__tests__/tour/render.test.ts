@@ -84,16 +84,17 @@ describe("renderMarkdown", () => {
     expect(out).toContain("• item two");
   });
 
+  const LONG_NUMBERED_ITEM = `1. ${Array(20).fill("word").join(" ")}`;
+
   it("keeps numbered-list lines within width", () => {
-    const long = `1. ${Array(20).fill("word").join(" ")}`;
-    const out = renderMarkdown(long, 40);
+    const out = renderMarkdown(LONG_NUMBERED_ITEM, 40);
     for (const line of out.split("\n")) {
       expect(line.length).toBeLessThanOrEqual(40);
     }
   });
 
   it("aligns continuation lines under the item text", () => {
-    const out = renderMarkdown(`1. ${Array(20).fill("word").join(" ")}`, 40);
+    const out = renderMarkdown(LONG_NUMBERED_ITEM, 40);
     const lines = out.split("\n").filter(Boolean);
     expect(lines[0].startsWith("  1. word")).toBe(true);
     expect(lines[1].startsWith("     word")).toBe(true);
