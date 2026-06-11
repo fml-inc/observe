@@ -1,6 +1,10 @@
 import ora from "ora";
 import pc from "picocolors";
-import { getValidToken, readTokens } from "../auth/token-store.js";
+import {
+  getValidToken,
+  readTokens,
+  SERVICE_TOKEN_LOGIN_USER_ID,
+} from "../auth/token-store.js";
 import { createFmlClient } from "../fml-client.js";
 import { CONVEX_URL } from "../config.js";
 import { panopticonExec } from "../daemon-utils.js";
@@ -72,9 +76,13 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     token = await getValidToken();
     if (token) {
       const stored = readTokens();
-      const detail = stored?.user?.email
-        ? `Logged in as ${stored.user.email}`
-        : "Token present";
+      const detail =
+        stored?.tokenType === "service" &&
+        stored.user.id === SERVICE_TOKEN_LOGIN_USER_ID
+          ? "Service token configured"
+          : stored?.user?.email
+            ? `Logged in as ${stored.user.email}`
+            : "Token present";
       pushAndReport({ label: "Auth", status: "ok", detail }, spinner);
     } else {
       pushAndReport(

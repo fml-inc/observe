@@ -174,9 +174,17 @@ export function createFmlClient(token: string) {
         // JWT callers this is ignored by the backend; for service tokens the
         // backend validates membership before honoring the override.
         if (isServiceToken) {
-          const { readTokens } = await import("./auth/token-store.js");
+          const { readTokens, SERVICE_TOKEN_LOGIN_USER_ID } = await import(
+            "./auth/token-store.js"
+          );
+          const stored = readTokens();
+          const storedUserExternalId =
+            stored?.tokenType === "service" &&
+            stored.user.id !== SERVICE_TOKEN_LOGIN_USER_ID
+              ? stored.user.id
+              : undefined;
           const userExternalId =
-            process.env.FML_USER_EXTERNAL_ID ?? readTokens()?.user.id;
+            process.env.FML_USER_EXTERNAL_ID ?? storedUserExternalId;
           if (userExternalId) body.userExternalId = userExternalId;
         }
 

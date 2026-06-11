@@ -187,7 +187,13 @@ program
   .command("login")
   .description("Sign in to your FML account")
   .option("--device", "Use device authorization flow (no browser needed)")
-  .action((opts: { device?: boolean }) => handleLogin(opts));
+  .option(
+    "--service-token",
+    "Sign in with an org service refresh token (prompts for fml_srt_*)",
+  )
+  .action((opts: { device?: boolean; serviceToken?: boolean }) =>
+    handleLogin(opts),
+  );
 
 program
   .command("logout")

@@ -4,6 +4,12 @@ import type { SyncTarget } from "@fml-inc/panopticon/sync";
 const mockAddTarget = vi.fn();
 const mockLoadSyncConfig = vi.fn();
 const mockSaveSyncConfig = vi.fn();
+const mockStoreServiceRefreshToken = vi.fn();
+const mockCreateFmlClient = vi.fn();
+const mockGetSelectedOrg = vi.fn();
+const mockGetValidToken = vi.fn();
+const mockSetSelectedOrg = vi.fn();
+const mockCaptureException = vi.fn();
 
 vi.mock("@fml-inc/panopticon/sync", () => ({
   addTarget: (...args: unknown[]) => mockAddTarget(...args),
@@ -18,12 +24,20 @@ vi.mock("../../auth/oauth.js", () => ({
 }));
 vi.mock("../../auth/device-flow.js", () => ({ deviceLogin: vi.fn() }));
 vi.mock("../../auth/token-store.js", () => ({
-  getValidToken: vi.fn(),
-  setSelectedOrg: vi.fn(),
+  getSelectedOrg: (...args: unknown[]) => mockGetSelectedOrg(...args),
+  getValidToken: (...args: unknown[]) => mockGetValidToken(...args),
+  SERVICE_TOKEN_LOGIN_USER_ID: "service-token",
+  setSelectedOrg: (...args: unknown[]) => mockSetSelectedOrg(...args),
+  storeServiceRefreshToken: (...args: unknown[]) =>
+    mockStoreServiceRefreshToken(...args),
 }));
-vi.mock("../../fml-client.js", () => ({ createFmlClient: vi.fn() }));
+vi.mock("../../fml-client.js", () => ({
+  createFmlClient: (...args: unknown[]) => mockCreateFmlClient(...args),
+}));
 vi.mock("../../sync/client.js", () => ({ resolveGitHubToken: vi.fn() }));
-vi.mock("../../sentry.js", () => ({ Sentry: { captureException: vi.fn() } }));
+vi.mock("../../sentry.js", () => ({
+  Sentry: { captureException: (...args: unknown[]) => mockCaptureException(...args) },
+}));
 const mockGetActiveEnv = vi.fn(() => ({
   name: "fml" as string,
   convexUrl: null as string | null,
@@ -37,7 +51,11 @@ vi.mock("../../config.js", async () => {
   };
 });
 
-import { upgradeSyncTargetAfterLogin } from "../../commands/login.js";
+import {
+  handleServiceTokenLogin,
+  runServiceTokenLogin,
+  upgradeSyncTargetAfterLogin,
+} from "../../commands/login.js";
 
 describe("upgradeSyncTargetAfterLogin", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -45,7 +63,15 @@ describe("upgradeSyncTargetAfterLogin", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateFmlClient.mockReset();
+    mockGetSelectedOrg.mockReset();
+    mockGetValidToken.mockReset();
+    mockSetSelectedOrg.mockReset();
+    mockStoreServiceRefreshToken.mockReset();
+    mockCaptureException.mockReset();
     mockGetActiveEnv.mockReturnValue({ name: "fml", convexUrl: null });
+    mockGetValidToken.mockResolvedValue(null);
+    mockGetSelectedOrg.mockReturnValue(null);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
@@ -126,6 +152,65 @@ describe("upgradeSyncTargetAfterLogin", () => {
     expect(mockAddTarget).not.toHaveBeenCalled();
   });
 
+  it("forces an explicit service-token login over an unrelated tokenCommand", async () => {
+    const target: SyncTarget = {
+      name: "fml",
+      url: "https://x.convex.site",
+      tokenCommand: "gh auth token",
+    };
+    mockLoadSyncConfig.mockReturnValue({ targets: [target] });
+    mockStoreServiceRefreshToken.mockResolvedValue(true);
+
+    await runServiceTokenLogin("fml_srt_refresh");
+
+    expect(mockStoreServiceRefreshToken).toHaveBeenCalledWith(
+      "fml_srt_refresh",
+      { env: "fml" },
+    );
+    expect(target.tokenCommand).toBe("fml sync-token --env fml");
+    expect(mockSaveSyncConfig).toHaveBeenCalledWith({ targets: [target] });
+  });
+
+  it("passes the active env through org selection after service-token login", async () => {
+    const target: SyncTarget = {
+      name: "dev",
+      url: "https://x.convex.site",
+    };
+    mockGetActiveEnv.mockReturnValue({ name: "dev", convexUrl: null });
+    mockLoadSyncConfig.mockReturnValue({ targets: [target] });
+    mockStoreServiceRefreshToken.mockResolvedValue(true);
+    mockGetValidToken.mockResolvedValue("fml_st_access");
+    mockCreateFmlClient.mockReturnValue({
+      queryOrgs: vi.fn().mockResolvedValue([
+        { _id: "org1", name: "Agent F", slug: "agent-f" },
+      ]),
+    });
+
+    await runServiceTokenLogin("fml_srt_refresh");
+
+    expect(mockGetValidToken).toHaveBeenCalledWith({ env: "dev" });
+    expect(mockGetSelectedOrg).toHaveBeenCalledWith("dev");
+    expect(mockSetSelectedOrg).toHaveBeenCalledWith("agent-f", "dev");
+  });
+
+  it("does not report user-canceled service-token login to Sentry", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
+      throw new Error(`exit:${code}`);
+    });
+    mockLoadSyncConfig.mockReturnValue({ targets: [] });
+    mockStoreServiceRefreshToken.mockRejectedValue(new Error("Canceled"));
+
+    await expect(handleServiceTokenLogin("fml_srt_refresh")).rejects.toThrow(
+      "exit:1",
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith("Login canceled.");
+    expect(mockCaptureException).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
+
   it("leaves an existing static token untouched", () => {
     const target: SyncTarget = {
       name: "fml",
@@ -139,6 +224,21 @@ describe("upgradeSyncTargetAfterLogin", () => {
     expect(target.token).toBe("static_xyz");
     expect(target.tokenCommand).toBeUndefined();
     expect(mockSaveSyncConfig).not.toHaveBeenCalled();
+  });
+
+  it("removes a static token when service-token login is explicit", () => {
+    const target: SyncTarget = {
+      name: "fml",
+      url: "https://x.convex.site",
+      token: "static_xyz",
+    };
+    mockLoadSyncConfig.mockReturnValue({ targets: [target] });
+
+    upgradeSyncTargetAfterLogin({ forceTokenCommand: true });
+
+    expect(target.token).toBeUndefined();
+    expect(target.tokenCommand).toBe("fml sync-token --env fml");
+    expect(mockSaveSyncConfig).toHaveBeenCalledWith({ targets: [target] });
   });
 
   it("refuses to write a tokenCommand when the env name is unsafe", () => {

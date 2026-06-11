@@ -10,7 +10,7 @@ import {
 import { FML_DATA_DIR } from "../dirs.js";
 import { Sentry } from "../sentry.js";
 
-interface StoredAuth {
+export interface StoredAuth {
   accessToken: string;
   refreshToken: string;
   expiresAt: number; // Unix timestamp in ms
@@ -60,14 +60,14 @@ export function writeTokens(auth: StoredAuth, envName?: string): void {
   });
 }
 
-export function getSelectedOrg(): string | null {
-  return readTokens()?.orgSlug ?? null;
+export function getSelectedOrg(envName?: string): string | null {
+  return readTokens(envName)?.orgSlug ?? null;
 }
 
-export function setSelectedOrg(orgSlug: string): void {
-  const stored = readTokens();
+export function setSelectedOrg(orgSlug: string, envName?: string): void {
+  const stored = readTokens(envName);
   if (!stored) return;
-  writeTokens({ ...stored, orgSlug });
+  writeTokens({ ...stored, orgSlug }, envName);
 }
 
 // ── Service Token Refresh (sandbox fml_srt_* → fml_st_*) ────────────────────
@@ -76,6 +76,8 @@ interface ServiceTokenCache {
   accessToken: string;
   expiresAt: number;
 }
+
+export const SERVICE_TOKEN_LOGIN_USER_ID = "service-token";
 
 /**
  * Caches and refresh-deduplication promises are keyed by env so in-process
@@ -160,6 +162,42 @@ async function refreshServiceToken(
     console.error(`[fml] Service token refresh error: ${err}`);
     return null;
   }
+}
+
+export async function storeServiceRefreshToken(
+  refreshToken: string,
+  opts?: { env?: string },
+): Promise<boolean> {
+  const token = refreshToken.trim();
+  if (!token.startsWith("fml_srt_")) {
+    console.error(
+      "[fml] Auth: service-token login expects a refresh token that starts with fml_srt_.",
+    );
+    return false;
+  }
+
+  const accessToken = await refreshServiceToken(token, opts?.env);
+  const cached = serviceTokenCaches.get(cacheKey(opts?.env));
+  if (!accessToken || !cached) {
+    return false;
+  }
+
+  writeTokens(
+    {
+      accessToken,
+      refreshToken: token,
+      expiresAt: cached.expiresAt,
+      user: {
+        id: SERVICE_TOKEN_LOGIN_USER_ID,
+        email: "service-token",
+        name: "FML service token",
+      },
+      tokenType: "service",
+    },
+    opts?.env,
+  );
+
+  return true;
 }
 
 // ── Token Resolution ────────────────────────────────────────────────────────
