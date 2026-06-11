@@ -73,5 +73,5 @@ export async function handleTour(): Promise<void> {
   if (skipped.length > 0) {
     console.error(`warn: skipped unparseable lesson files: ${skipped.join(", ")}`);
   }
-  console.log("Tour complete. Run `fml tour` anytime, or `/tour` in Claude Code.");
+  console.log("Tour complete. Run `fml tour` anytime, or `/fml:tour` in Claude Code.");
 }
