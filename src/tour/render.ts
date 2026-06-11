@@ -26,6 +26,26 @@ function inline(text: string): string {
     .replace(/`([^`]+)`/g, (_, s: string) => pc.cyan(s));
 }
 
+/** Placeholder for spaces inside inline spans while wrapping. NUL cannot
+ * appear in lesson copy, and it is not \s, so wrap() treats a span as one
+ * word. Same display width as a space, so wrap math stays exact. */
+const SPAN_SPACE = "\u0000";
+
+/**
+ * Wraps prose while keeping `code` and **bold** spans atomic: a span that
+ * straddled a wrap point would leave unpaired markers that inline() (applied
+ * per line) mis-pairs with the next span. Spaces inside spans are swapped
+ * for a placeholder before wrapping and restored on each wrapped line.
+ */
+function wrapProse(text: string, width: number): string[] {
+  const protectedText = text.replace(/\*\*[^*]+\*\*|`[^`]+`/g, (span) =>
+    span.replaceAll(" ", SPAN_SPACE),
+  );
+  return wrap(protectedText, width).map((line) =>
+    line.replaceAll(SPAN_SPACE, " "),
+  );
+}
+
 /**
  * Renders the markdown subset used by tour lessons: paragraphs, `- ` bullets,
  * numbered lists, and ``` fences. Anything fancier is not supported on purpose.
@@ -42,13 +62,13 @@ export function renderMarkdown(md: string, width: number): string {
         const m = item.match(/^\s*(?:[-*]|(\d+)\.)\s+(.*)$/);
         if (!m) continue;
         const marker = m[1] ? `${m[1]}.` : "•";
-        const wrapped = wrap(m[2], width - 4);
+        const wrapped = wrapProse(m[2], width - 4);
         out.push(`  ${marker} ${inline(wrapped[0] ?? "")}`);
         for (const cont of wrapped.slice(1))
           out.push(`    ${inline(cont)}`);
       }
     } else {
-      for (const line of wrap(block.replace(/\n/g, " "), width))
+      for (const line of wrapProse(block.replace(/\n/g, " "), width))
         out.push(inline(line));
     }
     out.push("");
