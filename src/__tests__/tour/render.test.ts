@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { stripVTControlCharacters as stripAnsi } from "node:util";
 import { renderMarkdown as renderMarkdownRaw, renderLesson as renderLessonRaw } from "../../tour/render.js";
 import type { TourLesson } from "../../tour/lessons.js";
-
-// eslint-disable-next-line no-control-regex -- stripping ANSI escapes requires matching
-const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 const renderMarkdown = (md: string, w: number) => stripAnsi(renderMarkdownRaw(md, w));
 const renderLesson = (l: TourLesson, i: number, t: number, w: number) =>
   stripAnsi(renderLessonRaw(l, i, t, w));
@@ -58,13 +56,47 @@ describe("renderMarkdown", () => {
   });
 
   it("keeps spans atomic in wrapped list items", () => {
-    // List items wrap at width - 4; pick a width that splits the span.
+    // List items wrap inside the marker prefix; pick a width that splits the span.
     const out = renderMarkdown("- 12345678 `abc def` tail", 19);
     expect(out).not.toContain("`");
     const hasContiguousSpan = out
       .split("\n")
       .some((line) => line.includes("abc def"));
     expect(hasContiguousSpan).toBe(true);
+  });
+
+  it("keeps blank lines inside code fences as part of the fence", () => {
+    const out = renderMarkdown("```\nfml a\n\nfml b\n```", 80);
+    expect(out).toContain("    fml a");
+    expect(out).toContain("    fml b");
+    expect(out).not.toContain("```");
+  });
+
+  it("keeps fences with list-like tails intact after a blank line", () => {
+    const out = renderMarkdown("```\nfml a\n\n- not a bullet\n```", 80);
+    expect(out).toContain("    - not a bullet");
+    expect(out).not.toContain("```");
+  });
+
+  it("appends hard-wrapped continuation lines to their list item", () => {
+    const out = renderMarkdown("- item one\n  continued text here\n- item two", 80);
+    expect(out).toContain("• item one continued text here");
+    expect(out).toContain("• item two");
+  });
+
+  it("keeps numbered-list lines within width", () => {
+    const long = `1. ${Array(20).fill("word").join(" ")}`;
+    const out = renderMarkdown(long, 40);
+    for (const line of out.split("\n")) {
+      expect(line.length).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it("aligns continuation lines under the item text", () => {
+    const out = renderMarkdown(`1. ${Array(20).fill("word").join(" ")}`, 40);
+    const lines = out.split("\n").filter(Boolean);
+    expect(lines[0].startsWith("  1. word")).toBe(true);
+    expect(lines[1].startsWith("     word")).toBe(true);
   });
 });
 
@@ -82,10 +114,7 @@ describe("renderLesson", () => {
   });
 
   it("shows the navigation footer", () => {
-    expect(screen).toContain("enter next");
-    expect(screen).toContain("p prev");
-    expect(screen).toContain("1-8 jump");
-    expect(screen).toContain("q quit");
+    expect(screen).toContain("enter next · p prev · 1-8 jump · q quit");
   });
 
   it("omits the try-it line when absent", () => {

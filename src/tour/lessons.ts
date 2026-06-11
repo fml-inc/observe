@@ -26,25 +26,36 @@ export interface TourLesson {
  * within that subset (no nesting, no multi-line values).
  */
 export function parseLesson(slug: string, raw: string): TourLesson | null {
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  // Normalize before parsing: strip a UTF-8 BOM, fold CRLF/CR to LF (Windows
+  // checkouts with autocrlf garble rendering otherwise), and drop remaining
+  // control characters (keeping \n and \t) so lesson content can never write
+  // raw escape sequences to the terminal.
+  const text = raw
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n?/g, "\n")
+    // eslint-disable-next-line no-control-regex -- stripping control bytes requires matching them
+    .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, "");
+  const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return null;
 
   const meta: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
+  for (const line of match[1].split("\n")) {
     const sep = line.indexOf(":");
     if (sep === -1) continue;
     meta[line.slice(0, sep).trim()] = line.slice(sep + 1).trim();
   }
 
-  const order = Number(meta.order);
+  // Strictly digits: Number("") is 0 and Number("0x2") is 2, both of which
+  // would otherwise pass an integer check for malformed frontmatter.
   const requires = (meta.requires ?? "none") as TourRequires;
   if (
     !meta.title ||
-    !Number.isInteger(order) ||
+    !/^\d+$/.test(meta.order ?? "") ||
     !REQUIRES_VALUES.includes(requires)
   ) {
     return null;
   }
+  const order = Number(meta.order);
 
   return {
     slug,

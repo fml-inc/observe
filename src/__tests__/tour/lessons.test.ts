@@ -53,6 +53,31 @@ describe("parseLesson", () => {
   it("returns null when frontmatter is absent", () => {
     expect(parseLesson("x", "just text")).toBeNull();
   });
+
+  it("parses CRLF files identically to LF files", () => {
+    const lesson = parseLesson("06-skills", VALID.replace(/\n/g, "\r\n"));
+    expect(lesson?.title).toBe("Skills");
+    expect(lesson?.body).toBe("Body text here.\n\nMore body.");
+  });
+
+  it("tolerates a UTF-8 BOM", () => {
+    expect(
+      parseLesson("x", "\uFEFF---\ntitle: Hi\norder: 1\n---\nBody.")?.title,
+    ).toBe("Hi");
+  });
+
+  it("strips control characters from the body", () => {
+    const lesson = parseLesson(
+      "x",
+      "---\ntitle: Hi\norder: 1\n---\nplain \x1b[31mred\x1b[0m and\x00null.",
+    );
+    expect(lesson?.body).toBe("plain [31mred[0m andnull.");
+  });
+
+  it("returns null when order is empty or non-decimal", () => {
+    expect(parseLesson("x", "---\ntitle: Hi\norder:\n---\nBody.")).toBeNull();
+    expect(parseLesson("x", "---\ntitle: Hi\norder: 0x2\n---\nBody.")).toBeNull();
+  });
 });
 
 describe("loadLessons", () => {
