@@ -25,9 +25,9 @@ Walk the user through FML one lesson at a time. Lessons live in `${CLAUDE_PLUGIN
    - precondition not met → `> Try it once you're set up: <tryCli>` followed by the shortest unlock hint (`fml login` for auth; "connect an integration via `fml open`" for integration; "sessions appear once sync has uploaded one — check `fml sync status`" for synced). `requires: none` is always met.
 4. A final navigation line, in plain text (no menu), listing only the moves that apply:
    `— Reply **next**, **back**, a lesson number **1–<total>**, **try**, or **quit**.`
-   Omit **back** on lesson 1; omit **try** unless the lesson has `tryClaude`; say **finish** instead of **next** on the last lesson.
+   Omit **back** on lesson 1; offer **try** ONLY when the lesson has `tryClaude` AND its `requires` is met (when unmet, the unlock hint above already covers it); say **finish** instead of **next** on the last lesson.
 
-Then **end your turn and wait** for the user's reply. Show exactly one lesson per message — never several, never a menu without the body above it.
+Then **end your turn and wait** for the user's reply. Show exactly one lesson per message — never several. (After a try-it demo or an aside, re-show only the navigation line; don't repeat the lesson body.)
 
 Begin the tour by showing **lesson 1** immediately after the silent setup, with no preamble before the heading.
 
@@ -35,10 +35,10 @@ Begin the tour by showing **lesson 1** immediately after the silent setup, with 
 
 Read the user's reply loosely (a word, a letter, or a number), do the move, then render the resulting lesson in full using the structure above:
 
-- `next` / `n` / empty reply → next lesson (on the last lesson, end the tour)
+- `next` / `n` / `finish` → next lesson (on the last lesson, end the tour)
 - `back` / `b` / `prev` → previous lesson
 - a number `1`–`<total>` → jump to that lesson
-- `try` → run the current lesson's try-it (below), then re-show the current lesson's navigation line
+- `try` → if the current lesson has `tryClaude` AND its `requires` is met, run the try-it (below); if `requires` is unmet, repeat the `tryCli` fallback with its unlock hint WITHOUT calling any tools; if the lesson has no `tryClaude`, say so in one line. Then re-show the current lesson's navigation line.
 - `quit` / `q` / `done` / `exit` → end the tour
 
 If the reply doesn't match any of these, treat it as a question, answer it briefly, and re-show the current lesson's navigation line.

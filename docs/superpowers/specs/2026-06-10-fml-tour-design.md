@@ -73,7 +73,7 @@ New commander command in `src/commands/tour.ts`.
 
 1. Read all lesson files from the plugin root; sort by `order`.
 2. Run a **one-time state check**: `whoami` + `fml_list_integrations`. Tool failure ⇒ treat as logged out. Never fatal, never repeated per-lesson.
-3. Present lessons one at a time. After each, offer an arrow-key menu (AskUserQuestion): **Next** / **Try it now** (only when the lesson's `requires` is satisfied by the state check) / **Back** / **Jump to lesson…** / **Quit**.
+3. Present lessons one at a time. After each, offer navigation: **Next** / **Try it now** (only when the lesson's `requires` is satisfied by the state check) / **Back** / **Jump to lesson…** / **Quit**. *(Implementation note: originally specified as an AskUserQuestion arrow-key menu; replaced during implementation with plain typed replies — the menu suppressed the lesson body and double-numbered jump targets. See plan deviation 7.)*
 4. **Try it now** executes the lesson's `claude` instruction against real tools and shows the result. Any failure degrades to the `cli` example + unlock hint and the tour continues.
 
 Live demos exist **only** on this surface (Claude Code is where the tools run). The data-availability ladder this gating handles:
