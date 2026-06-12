@@ -20,11 +20,13 @@ Reading the lessons IS the tour — the navigation menu is never a substitute fo
 
 1. **Write the lesson out, as a normal assistant message, before doing anything else.** Output a heading `**How FML Works — Lesson <n>/<total>: <title>**` followed by the lesson body rendered as markdown, verbatim — every paragraph, list, and code block. Do not summarize, shorten, embellish, or editorialize. This is REQUIRED on every lesson, the first one included.
 2. If the lesson has `tryClaude` but its `requires` is NOT met, append a line: `> Try it once you're set up: ` followed by the `tryCli` command — plus the shortest unlock hint (`fml login` for auth; "connect an integration via `fml open`" for integration; "sessions appear once sync has uploaded one — check `fml sync status`" for synced). A `requires` of `none` is always met.
-3. **Only after the lesson body is written out**, call AskUserQuestion (question: "Where to next?") to ask where to go. Never call AskUserQuestion before the current lesson's body has been emitted in full. Options:
-   - **Next** — continue to lesson n+1 (on the last lesson: "Finish tour")
-   - **Try it now** — ONLY include this option when the lesson has `tryClaude` AND its `requires` is met
+3. **Only after the lesson body is written out**, call AskUserQuestion (question: "Where to next?") to ask where to go. Never call AskUserQuestion before the current lesson's body has been emitted in full. Keep every option label a short word with **no number in it** — AskUserQuestion prepends its own 1, 2, 3…, so a lesson number inside a label shows up as a confusing second number. Options:
+   - **Next** — continue to lesson n+1 (on the last lesson, label it "Finish")
    - **Back** — previous lesson (omit on lesson 1)
-   - **Jump / Quit** — let the user name a lesson number to jump to, or end the tour
+   - **Try it now** — ONLY include this option when the lesson has `tryClaude` AND its `requires` is met
+   - **Quit** — end the tour
+
+   To jump straight to another lesson, the user picks the built-in "Other" choice and types a lesson number or title — honor it. Do NOT list the other lessons as options, and do NOT open a second AskUserQuestion menu to choose a jump target.
 
 ## Try it now
 
