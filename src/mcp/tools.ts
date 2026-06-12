@@ -28,8 +28,8 @@ function errorResult(message: string) {
   };
 }
 
-const PANOPTICON_HINT =
-  "\n\nFor local data, use the panopticon MCP tools instead (e.g. panopticon__sessions, panopticon__costs, panopticon__search, panopticon__timeline).";
+const LOCAL_DATA_HINT =
+  "\n\nFor local data, use FML local commands instead (e.g. `fml sessions --local`, `fml spending --local`, `fml search --local`, `fml timeline <session-id> --local`, or `fml local <command>`).";
 
 async function toolHandler(toolName: string, args: Record<string, unknown>) {
   try {
@@ -37,18 +37,18 @@ async function toolHandler(toolName: string, args: Record<string, unknown>) {
     if (!api) {
       return errorResult(
         "Not authenticated. Run `fml login` to sign in, then restart Claude Code." +
-          PANOPTICON_HINT,
+          LOCAL_DATA_HINT,
       );
     }
     const result = await api.callBackend(toolName, args);
     if (!result.ok) {
-      return errorResult((result.error ?? "Unknown error") + PANOPTICON_HINT);
+      return errorResult((result.error ?? "Unknown error") + LOCAL_DATA_HINT);
     }
     return textResult(result.result);
   } catch (err) {
     Sentry.captureException(err);
     const msg = err instanceof Error ? err.message : String(err);
-    return errorResult(`Unexpected error: ${msg}` + PANOPTICON_HINT);
+    return errorResult(`Unexpected error: ${msg}` + LOCAL_DATA_HINT);
   }
 }
 

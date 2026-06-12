@@ -1,6 +1,6 @@
 # FML
 
-Agent tools for AI coding assistants. Installs as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) with MCP tools for session analytics, cost tracking, integrations, and team workflows — powered by [Panopticon](https://github.com/fml-inc/panopticon) for local data collection.
+Agent tools for AI coding assistants. FML provides a CLI for humans and agents, a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins) for MCP tools, and command/skill routers for supported coding-agent harnesses. Local collection is powered by [Panopticon](https://github.com/fml-inc/panopticon).
 
 ## Install
 
@@ -8,7 +8,7 @@ Agent tools for AI coding assistants. Installs as a [Claude Code plugin](https:/
 npm install -g @fml-inc/fml
 ```
 
-This installs the plugin, registers hooks and MCP tools in Claude Code, and bootstraps Panopticon for local data collection. Start a new session to activate.
+This installs the CLI package, registers Claude Code MCP tools, installs the FML command/skill surface for supported harnesses, and bootstraps Panopticon for local data collection. Start a new session to activate.
 
 Then sign in:
 
@@ -28,15 +28,19 @@ The guide covers: `npm install -g @fml-inc/fml` → `fml install` → `fml login
 
 ## What it does
 
-**Local observability** — Panopticon captures OpenTelemetry signals, hook events, session files, and API traffic from Claude Code, Gemini CLI, and Codex CLI into a local SQLite database.
+**Local observability** — Panopticon captures OpenTelemetry signals, hook events, session files, and API traffic from supported local agent harnesses into a SQLite database.
 
-**MCP tools for your agent** — Once installed, Claude Code gets tools to query your sessions, costs, activity, and connected integrations directly in conversation.
+**MCP tools in Claude Code** — Claude Code gets FML tools to query sessions, costs, activity, connected integrations, messages, config snapshots, and team workflows directly in conversation.
+
+**Command and skill surface** — Installed Claude Code, Codex, and Pi harnesses get an `fml` skill, and Claude Code/Pi also get an `fml` command or prompt. Use `/fml <command>` in Claude Code or `$fml <command>` where skill invocation is supported to route FML commands from inside an agent session.
+
+**Local passthrough** — Add `--local` to common read commands, or use `fml local <command>`, to query the local Panopticon database without switching to a separate Panopticon command surface.
 
 **Cloud sync** — Optionally sync local data to the FML dashboard for team-wide visibility, config snapshots, and automations.
 
 ## MCP tools
 
-These tools are available to Claude Code via the plugin:
+These tools are available to Claude Code through the plugin. Other harnesses can use the `fml` skill/router and the CLI catalog below.
 
 | Tool | Description |
 |------|-------------|
@@ -55,7 +59,7 @@ These tools are available to Claude Code via the plugin:
 | `fml_list_skills` | Browse and load skills |
 | `list_repo_configs` | Team config snapshots |
 
-For agents or scripts that need backend tools not exposed as dedicated MCP tools yet, use the dynamic CLI catalog:
+For agents or scripts that need backend tools not exposed as dedicated MCP tools, use the dynamic CLI catalog:
 
 ```bash
 fml tools list --json
@@ -66,9 +70,9 @@ fml tools call <tool-name> --args '{"key":"value"}'
 ## CLI
 
 ```
-fml install              Register plugin, hooks, and daemons
-fml uninstall            Remove plugin and hooks
-  --target <t>           Target: claude, gemini, codex, claude-desktop, all
+fml install              Register plugin, commands, skills, hooks, and daemons
+fml uninstall            Remove plugin, commands, skills, and hooks
+  --target <t>           Target: claude, gemini, codex, claude-desktop, pi, all
   --purge                Also remove all data, logs, and auth tokens
 fml update               Update to the latest version
 
@@ -81,6 +85,8 @@ fml doctor               Check configuration and connectivity
 fml open                 Open FML dashboard in browser
 fml start                Start local collection and sync
 fml stop                 Stop local collection and sync
+fml local <cmd>          Run a local Panopticon command through FML
+fml local -- <cmd> ...    Pass flags like --help through to the local command
 
 fml tools                List backend tools from the dynamic catalog
 fml tools list           List backend tools from the dynamic catalog
@@ -93,6 +99,7 @@ fml sessions             List recent sessions
 fml timeline <id>        Events for a session
 fml spending             Token usage and cost breakdown
 fml search <query>       Search across sessions
+  --local                Use local Panopticon data instead of FML cloud
 
 fml sync setup           Configure sync targets
 fml sync list            List sync targets
