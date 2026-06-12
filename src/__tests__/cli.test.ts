@@ -11,7 +11,10 @@ const CLI_PATH = path.resolve(__dirname, "../../dist/cli.js");
 // touch the real ~/Library/Application Support/fml/auth.<env>.json.
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "fml-cli-test-"));
 
-function run(...args: string[]): { stdout: string; exitCode: number } {
+function runWithEnv(
+  args: string[],
+  env: Record<string, string | undefined> = {},
+): { stdout: string; exitCode: number } {
   try {
     const stdout = execFileSync("node", [CLI_PATH, ...args], {
       encoding: "utf-8",
@@ -21,6 +24,7 @@ function run(...args: string[]): { stdout: string; exitCode: number } {
         NODE_NO_WARNINGS: "1",
         FML_DATA_DIR: TEST_DATA_DIR,
         FML_LOG_DIR: TEST_DATA_DIR,
+        ...env,
       },
     });
     return { stdout, exitCode: 0 };
@@ -31,6 +35,10 @@ function run(...args: string[]): { stdout: string; exitCode: number } {
       exitCode: e.status ?? 1,
     };
   }
+}
+
+function run(...args: string[]): { stdout: string; exitCode: number } {
+  return runWithEnv(args);
 }
 
 describe("CLI integration", () => {
@@ -47,6 +55,7 @@ describe("CLI integration", () => {
       expect(stdout).toContain("open");
       expect(stdout).toContain("start");
       expect(stdout).toContain("stop");
+      expect(stdout).toContain("local");
       expect(stdout).toContain("tools");
       expect(stdout).not.toContain("commands");
       expect(stdout).not.toMatch(/\n\s+panopticon\s/);
@@ -88,6 +97,35 @@ describe("CLI integration", () => {
     });
   });
 
+  describe("local subcommand", () => {
+    it("shows help with --help", () => {
+      const { stdout, exitCode } = run("local", "--help");
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("Run a local Panopticon command through FML");
+    });
+
+    it("passes unknown flags through to panopticon", () => {
+      const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "fml-panopticon-bin-"));
+      const panopticonBin = path.join(binDir, "panopticon");
+      fs.writeFileSync(
+        panopticonBin,
+        '#!/usr/bin/env node\nprocess.stdout.write(`${JSON.stringify(process.argv.slice(2))}\\n`);\n',
+        "utf8",
+      );
+      fs.chmodSync(panopticonBin, 0o755);
+
+      const { stdout, exitCode } = runWithEnv(
+        ["local", "sessions", "--limit", "5", "--since", "7d"],
+        {
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        },
+      );
+
+      expect(exitCode).toBe(0);
+      expect(stdout.trim()).toBe('["sessions","--limit","5","--since","7d"]');
+    });
+  });
+
   describe("install subcommand", () => {
     it("shows help with --help", () => {
       const { stdout, exitCode } = run("install", "--help");
@@ -109,6 +147,15 @@ describe("CLI integration", () => {
       const { stdout, exitCode } = run("sync", "reset", "--help");
       expect(exitCode).toBe(0);
       expect(stdout).toContain("[name]");
+    });
+  });
+
+  describe("data commands", () => {
+    it("documents --local on sessions help", () => {
+      const { stdout, exitCode } = run("sessions", "--help");
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("--local");
+      expect(stdout).toContain("local Panopticon data");
     });
   });
 
