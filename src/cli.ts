@@ -71,6 +71,7 @@ import {
   handleMessagesContext,
 } from "./commands/messages.js";
 import { handleSkillsList, handleSkillsLoad } from "./commands/skills.js";
+import { handleTour } from "./commands/tour.js";
 import {
   handleConfigList,
   handleConfigDetail,
@@ -210,6 +211,11 @@ program
   .command("status")
   .description("Show auth and local service status")
   .action(() => handleStatus());
+
+program
+  .command("tour")
+  .description("Interactive walkthrough of how FML works")
+  .action(() => handleTour());
 
 program
   .command("doctor")

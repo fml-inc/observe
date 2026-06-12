@@ -1,0 +1,5 @@
+# Repo-wide LF for markdown: tour/*.md is parsed and rendered by the tour
+# (CRLF checkouts must not reach the renderer; the npm tarball ships LF),
+# and keeping all .md uniform avoids mixed-ending diffs in docs/.
+*.md text eol=lf
+*.png binary

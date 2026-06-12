@@ -36,7 +36,7 @@ The guide covers: `npm install -g @fml-inc/fml` → `fml install` → `fml login
 
 ## MCP tools
 
-These tools are available to Claude Code via the plugin:
+These tools are available to Claude Code via the plugin. New to FML? Type `/fml:tour` in Claude Code or run `fml tour` in your terminal for a guided walkthrough.
 
 | Tool | Description |
 |------|-------------|
@@ -77,6 +77,7 @@ fml logout               Sign out and clear credentials
 fml org [slug]           Show or select organization
 fml status               Show auth and daemon status
 fml doctor               Check configuration and connectivity
+fml tour                 Interactive walkthrough of how FML works
 
 fml open                 Open FML dashboard in browser
 fml start                Start local collection and sync
