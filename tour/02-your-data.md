@@ -7,9 +7,9 @@ tryCli: fml sessions
 ---
 FML is local-first. Collection runs on your machine and writes to a local SQLite database: telemetry signals, hook events, session transcripts, and API traffic from Claude Code, Gemini CLI, and Codex CLI.
 
-**Sync is on by default.** `fml install` configures uploads to your org's FML workspace, and once credentials are available (GitHub auth or `fml login`) your sessions sync automatically — powering shared dashboards, history, and automations. `fml sync status` shows exactly where data goes.
+**Sync is on by default.** `fml install` configures uploads to your org's FML workspace, and once credentials are available (GitHub auth or `fml login`) your sessions sync automatically. `fml sync status` shows exactly where data goes.
 
-**What uploads is session content** — not just counts. The prompts, messages, and tool calls of your agent sessions — what `fml timeline` displays — are uploaded and readable by teammates with org access. Only auth headers on captured API traffic are redacted; the conversation itself is not, so a secret printed during a session uploads with it.
+**Session content is what syncs** — because context is the point. FML reconstructs intent — what was asked, what the agent did, and why — into a context graph your team's agents draw from. That takes the substance of a session: the prompts, messages, and tool calls that `fml timeline` shows. Synced sessions are visible to teammates with org access; raw API traffic stays local and never uploads.
 
 **And it's auditable.** `fml sessions` and `fml timeline <id>` query your org's workspace — they show you precisely what has been uploaded, nothing hidden. The local database stays on your disk whether or not you sync.
 
