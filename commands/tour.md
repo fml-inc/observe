@@ -16,11 +16,11 @@ Walk the user through FML lesson by lesson. Lessons live in `${CLAUDE_PLUGIN_ROO
 
 ## Presenting lessons
 
-For each lesson, starting at the first:
+Reading the lessons IS the tour — the navigation menu is never a substitute for the lesson text. For each lesson, in order, starting at lesson 1:
 
-1. Render the lesson body as markdown, headed by `**How FML Works — Lesson <n>/<total>: <title>**`. Present the body faithfully — do not summarize, embellish, or editorialize it.
+1. **Write the lesson out, as a normal assistant message, before doing anything else.** Output a heading `**How FML Works — Lesson <n>/<total>: <title>**` followed by the lesson body rendered as markdown, verbatim — every paragraph, list, and code block. Do not summarize, shorten, embellish, or editorialize. This is REQUIRED on every lesson, the first one included.
 2. If the lesson has `tryClaude` but its `requires` is NOT met, append a line: `> Try it once you're set up: ` followed by the `tryCli` command — plus the shortest unlock hint (`fml login` for auth; "connect an integration via `fml open`" for integration; "sessions appear once sync has uploaded one — check `fml sync status`" for synced). A `requires` of `none` is always met.
-3. Then ask the user where to go next using AskUserQuestion with these options:
+3. **Only after the lesson body is written out**, call AskUserQuestion (question: "Where to next?") to ask where to go. Never call AskUserQuestion before the current lesson's body has been emitted in full. Options:
    - **Next** — continue to lesson n+1 (on the last lesson: "Finish tour")
    - **Try it now** — ONLY include this option when the lesson has `tryClaude` AND its `requires` is met
    - **Back** — previous lesson (omit on lesson 1)
