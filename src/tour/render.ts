@@ -6,7 +6,10 @@ import type { TourLesson } from "./lessons.js";
  * wrapping (spans must stay atomic across line breaks) so the two can never
  * drift apart: **bold** (which may nest `code`) and `code`.
  */
-const BOLD_SPAN = /\*\*([^*]+)\*\*/g;
+// Bold content must not start or end with whitespace, so space-adjacent
+// `**` pairs in prose (e.g. "2 ** 3 and 4 ** 5") are left alone instead of
+// being silently consumed as a bold span.
+const BOLD_SPAN = /\*\*(\S(?:[^*]*\S)?)\*\*/g;
 const CODE_SPAN = /`([^`]+)`/g;
 const INLINE_SPANS = new RegExp(
   `${BOLD_SPAN.source}|${CODE_SPAN.source}`,
@@ -52,8 +55,10 @@ const SPAN_SPACE = "\u0000";
  * placeholder before wrapping and restored on each wrapped line.
  */
 function wrapProse(text: string, width: number): string[] {
+  // Protect ALL whitespace inside spans (wrap() splits on \s+, so a tab
+  // inside a span would still break atomicity if only spaces were swapped).
   const protectedText = text.replace(INLINE_SPANS, (span) =>
-    span.replaceAll(" ", SPAN_SPACE),
+    span.replace(/\s/g, SPAN_SPACE),
   );
   return wrap(protectedText, width).map((line) =>
     line.replaceAll(SPAN_SPACE, " "),
@@ -97,11 +102,13 @@ interface ListItem {
 }
 
 /** Lines that don't start a new item continue the previous one (an author
- * hard-wrapping a bullet must not silently lose the continuation text). */
+ * hard-wrapping a bullet must not silently lose the continuation text).
+ * New items must start at column 0 — an indented "2024. It got faster."
+ * continuation is text, not a numbered item. */
 function parseListItems(block: string): ListItem[] {
   const items: ListItem[] = [];
   for (const line of block.split("\n")) {
-    const m = line.match(/^\s*(?:[-*]|(\d+)\.)\s+(.*)$/);
+    const m = line.match(/^(?:[-*]|(\d+)\.)\s+(.*)$/);
     if (m) {
       items.push({ marker: m[1] ? `${m[1]}.` : "•", text: m[2] });
     } else if (items.length > 0) {
@@ -124,7 +131,7 @@ export function renderMarkdown(md: string, width: number): string {
     if (block.startsWith("```")) {
       const code = block.replace(/^```[^\n]*\n?/, "").replace(/\n?```$/, "");
       for (const line of code.split("\n")) out.push(pc.cyan(`    ${line}`));
-    } else if (/^(\s*[-*]|\s*\d+\.)\s/.test(block)) {
+    } else if (/^([-*]|\d+\.)\s/.test(block)) {
       for (const { marker, text } of parseListItems(block)) {
         const prefix = `  ${marker} `;
         const indent = " ".repeat(prefix.length);
@@ -139,6 +146,22 @@ export function renderMarkdown(md: string, width: number): string {
     out.push("");
   }
   return out.join("\n").trimEnd();
+}
+
+/**
+ * Clamps a rendered lesson to the terminal height. The alternate screen has
+ * no scrollback, so content taller than the window would scroll the header
+ * off irrecoverably; instead keep the top visible, truncate the body with a
+ * marker, and always keep the footer (the last two lines: rule + nav) on
+ * screen. The resize handler redraws, so "resize taller" works live.
+ */
+export function fitToHeight(rendered: string, rows: number): string {
+  const lines = rendered.split("\n");
+  if (lines.length <= rows) return rendered;
+  const footer = lines.slice(-2);
+  const marker = pc.dim("  ⋯ resize taller to see the rest");
+  const keep = Math.max(rows - 3, 1);
+  return [...lines.slice(0, keep), marker, ...footer].join("\n");
 }
 
 export function renderLesson(

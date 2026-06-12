@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { stripVTControlCharacters as stripAnsi } from "node:util";
-import { renderMarkdown as renderMarkdownRaw, renderLesson as renderLessonRaw } from "../../tour/render.js";
+import {
+  fitToHeight,
+  renderMarkdown as renderMarkdownRaw,
+  renderLesson as renderLessonRaw,
+} from "../../tour/render.js";
 import type { TourLesson } from "../../tour/lessons.js";
 const renderMarkdown = (md: string, w: number) => stripAnsi(renderMarkdownRaw(md, w));
 const renderLesson = (l: TourLesson, i: number, t: number, w: number) =>
@@ -98,6 +102,40 @@ describe("renderMarkdown", () => {
     const lines = out.split("\n").filter(Boolean);
     expect(lines[0].startsWith("  1. word")).toBe(true);
     expect(lines[1].startsWith("     word")).toBe(true);
+  });
+
+  it("treats an indented digit-leading line as continuation, not a new item", () => {
+    const out = renderMarkdown("- shipped in\n  2024. It got faster.", 80);
+    expect(out).toContain("• shipped in 2024. It got faster.");
+    const bogusItem = out.split("\n").some((l) => l.trim().startsWith("2024."));
+    expect(bogusItem).toBe(false);
+  });
+
+  it("keeps spans with internal tabs atomic across wraps", () => {
+    const out = renderMarkdown("12345678 `abc\tdef` tail", 15);
+    expect(out).not.toContain("`");
+  });
+
+  it("leaves space-adjacent ** pairs in prose alone", () => {
+    const out = renderMarkdown("compute 2 ** 3 and 4 ** 5 done", 80);
+    expect(out).toContain("compute 2 ** 3 and 4 ** 5 done");
+  });
+});
+
+describe("fitToHeight", () => {
+  const tall = Array.from({ length: 30 }, (_, i) => `line${i}`).join("\n");
+
+  it("returns short content unchanged", () => {
+    expect(fitToHeight("a\nb\nc", 24)).toBe("a\nb\nc");
+  });
+
+  it("clamps tall content keeping the top and the 2-line footer", () => {
+    const out = stripAnsi(fitToHeight(tall, 24)).split("\n");
+    expect(out).toHaveLength(24);
+    expect(out[0]).toBe("line0");
+    expect(out[21]).toContain("resize taller");
+    expect(out[22]).toBe("line28");
+    expect(out[23]).toBe("line29");
   });
 });
 

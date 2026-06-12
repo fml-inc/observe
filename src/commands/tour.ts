@@ -5,7 +5,7 @@ import {
   type TourLesson,
 } from "../tour/lessons.js";
 import { reducePager, type PagerState } from "../tour/pager.js";
-import { renderLesson } from "../tour/render.js";
+import { fitToHeight, renderLesson } from "../tour/render.js";
 
 const ENTER_ALT = "\x1b[?1049h\x1b[?25l";
 const EXIT_ALT = "\x1b[?25h\x1b[?1049l";
@@ -27,9 +27,14 @@ function width(): number {
 }
 
 function draw(lessons: TourLesson[], state: PagerState): void {
-  process.stdout.write(
-    CLEAR + renderLesson(lessons[state.index], state.index, lessons.length, width()) + "\n",
+  // rows - 1: the trailing newline would otherwise scroll the header off
+  // on a terminal exactly as tall as the lesson.
+  const rows = Math.max((process.stdout.rows || 24) - 1, 5);
+  const screen = fitToHeight(
+    renderLesson(lessons[state.index], state.index, lessons.length, width()),
+    rows,
   );
+  process.stdout.write(CLEAR + screen + "\n");
 }
 
 export async function handleTour(): Promise<void> {

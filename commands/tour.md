@@ -18,11 +18,11 @@ Walk the user through FML one lesson at a time. Lessons live in `${CLAUDE_PLUGIN
 
 **Do NOT use AskUserQuestion or any menu/picker tool anywhere in this tour.** Navigation is plain text. Each lesson is a single normal assistant message, built in this exact order:
 
-1. A heading line: `**How FML Works — Lesson <n>/<total>: <title>**`
+1. A heading line: `**How FML Works — Lesson <n>/<total>: <title>**` — `<n>` is the lesson's 1-based position in the sorted list (not its frontmatter `order`), and jump numbers below mean the same positions.
 2. The lesson body, rendered as markdown, **verbatim** — every paragraph, list, and code block. Do not summarize, shorten, embellish, or editorialize. This is the content the user is here to read; it must always be present.
 3. Try-it line, if the lesson has `tryClaude`:
    - precondition met → `*Want the live version? Say **try** and I'll run it against your real data.*`
-   - precondition not met → `> Try it once you're set up: <tryCli>` followed by the shortest unlock hint (`fml login` for auth; "connect an integration via `fml open`" for integration; "sessions appear once sync has uploaded one — check `fml sync status`" for synced). `requires: none` is always met.
+   - precondition not met → `> Try it once you're set up: <tryCli>` followed by the shortest unlock hint (`fml login` for auth; "connect an integration via `fml open`" for integration; "sessions appear once sync has uploaded one — check `fml sync status`" for synced). If `auth` is ALSO unmet, the hint is always `fml login` first — the other steps depend on it. `requires: none` is always met.
 4. A final navigation line, in plain text (no menu), listing only the moves that apply:
    `— Reply **next**, **back**, a lesson number **1–<total>**, **try**, or **quit**.`
    Omit **back** on lesson 1; offer **try** ONLY when the lesson has `tryClaude` AND its `requires` is met (when unmet, the unlock hint above already covers it); say **finish** instead of **next** on the last lesson.
@@ -35,17 +35,17 @@ Begin the tour by showing **lesson 1** immediately after the silent setup, with 
 
 Read the user's reply loosely (a word, a letter, or a number), do the move, then render the resulting lesson in full using the structure above:
 
-- `next` / `n` / `finish` → next lesson (on the last lesson, end the tour)
+- `next` / `n` → next lesson (on the last lesson, end the tour)
 - `back` / `b` / `prev` → previous lesson
 - a number `1`–`<total>` → jump to that lesson
 - `try` → if the current lesson has `tryClaude` AND its `requires` is met, run the try-it (below); if `requires` is unmet, repeat the `tryCli` fallback with its unlock hint WITHOUT calling any tools; if the lesson has no `tryClaude`, say so in one line. Then re-show the current lesson's navigation line.
-- `quit` / `q` / `done` / `exit` → end the tour
+- `finish` / `quit` / `q` / `done` / `exit` → end the tour (mid-tour, "finish" means the user is done, not "skip ahead")
 
 If the reply doesn't match any of these, treat it as a question, answer it briefly, and re-show the current lesson's navigation line.
 
 ## Try it
 
-Run the lesson's `tryClaude` instruction using **only FML's MCP tools** — never shell commands or non-FML tools, regardless of what the lesson text says. Keep the output compact. If the call fails or returns nothing useful, show the `tryCli` fallback with its unlock hint instead — never present an error as a demo, never retry more than once.
+Run the lesson's `tryClaude` instruction using **only FML's MCP tools** — never shell commands or non-FML tools, regardless of what the lesson text says. Keep the output compact. If the call fails or returns nothing useful, never present the error as a demo: show the `tryCli` fallback, and since the precondition WAS met, suggest `fml doctor` (not an unlock hint — the user is already set up). Never retry on your own; a fresh user request to try again may run it once more.
 
 ## Ending
 

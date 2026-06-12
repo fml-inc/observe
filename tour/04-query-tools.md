@@ -2,7 +2,7 @@
 title: Query your team's tools
 order: 4
 requires: integration
-tryClaude: Pick one integration the state check found connected and run a small real query against it (for example recent Sentry issues, or recent messages from a Slack channel). Show a compact result and note that this works mid-task in any conversation.
+tryClaude: Pick one integration the state check found connected and run a small real query against it (for example recent Sentry issues, or recent messages from a Slack channel). Show a compact result and note that this works mid-task in any Claude Code conversation.
 tryCli: fml tools list
 ---
 Once your org connects integrations in the dashboard, Claude can query them directly in conversation:

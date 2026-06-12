@@ -46,6 +46,21 @@ describe("shipped tour lessons", () => {
     }
   });
 
+  it("every list is preceded by a blank line", () => {
+    // A list glued to a paragraph is classified as prose and flattened —
+    // silent bullet loss the marker sweep can't see.
+    for (const lesson of lessons) {
+      const lines = lesson.body.split("\n");
+      for (let i = 1; i < lines.length; i++) {
+        if (/^([-*]|\d+\.)\s/.test(lines[i])) {
+          const prev = lines[i - 1];
+          const prevOk = prev.trim() === "" || /^([-*]|\d+\.)\s/.test(prev);
+          expect(prevOk, `${lesson.slug}: list glued to prose at "${lines[i]}"`).toBe(true);
+        }
+      }
+    }
+  });
+
   it("every code fence is closed and unindented", () => {
     // The renderer's documented subset: an unclosed fence swallows the rest
     // of the lesson; an indented fence folds into the surrounding text.
