@@ -4,6 +4,10 @@ import path from "node:path";
 import { execBinSync, resolveBin } from "../bin-utils.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { FML_DATA_DIR, FML_LOG_DIR } from "../dirs.js";
+import {
+  agentSkillTargetsForUninstallTarget,
+  removeAgentSkills,
+} from "../agent-skills.js";
 
 const CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const CLAUDE_SETTINGS_PATH = path.join(CLAUDE_DIR, "settings.json");
@@ -43,9 +47,9 @@ export function handleUninstall(opts: {
 
   // 1. Tell Claude Code to uninstall the plugin (kills MCP server, evicts cache)
   if (targetSpecific) {
-    console.log("[1/5] Skipping plugin uninstall (target-specific uninstall)");
+    console.log("[1/6] Skipping plugin uninstall (target-specific uninstall)");
   } else {
-    console.log("[1/5] Uninstalling MCP plugin...");
+    console.log("[1/6] Uninstalling MCP plugin...");
     // Uninstall from user scope via CLI
     const claudeBin = resolveBin("claude");
     if (claudeBin) {
@@ -97,9 +101,9 @@ export function handleUninstall(opts: {
 
   // 2. Remove fml plugin from Claude Code settings
   if (targetSpecific) {
-    console.log("[2/5] Skipping plugin settings (target-specific uninstall)");
+    console.log("[2/6] Skipping plugin settings (target-specific uninstall)");
   } else {
-    console.log("[2/5] Removing plugin from Claude Code settings...");
+    console.log("[2/6] Removing plugin from Claude Code settings...");
     const settings = readJsonFile(CLAUDE_SETTINGS_PATH) as Record<
       string,
       Record<string, unknown>
@@ -120,9 +124,9 @@ export function handleUninstall(opts: {
 
   // 3. Remove marketplace symlink and manifest entry
   if (targetSpecific) {
-    console.log("[3/5] Skipping marketplace (target-specific uninstall)");
+    console.log("[3/6] Skipping marketplace (target-specific uninstall)");
   } else {
-    console.log("[3/5] Removing marketplace registration...");
+    console.log("[3/6] Removing marketplace registration...");
     const marketplaceLink = path.join(MARKETPLACE_DIR, "fml");
     try {
       fs.rmSync(marketplaceLink, { recursive: true, force: true });
@@ -146,8 +150,16 @@ export function handleUninstall(opts: {
     }
   }
 
-  // 4. Run panopticon uninstall
-  console.log("[4/5] Running panopticon uninstall...");
+  // 4. Remove FML-managed agent skills
+  console.log("[4/6] Removing agent skills...");
+  const skillTargets = agentSkillTargetsForUninstallTarget(opts.target);
+  for (const result of removeAgentSkills(undefined, skillTargets)) {
+    const suffix = result.reason ? ` (${result.reason})` : "";
+    console.log(`      ${result.target}: ${result.status}${suffix} — ${result.path}`);
+  }
+
+  // 5. Run panopticon uninstall
+  console.log("[5/6] Running panopticon uninstall...");
   const panoArgs = ["uninstall"];
   if (opts.target) panoArgs.push("--target", opts.target);
   if (opts.purge) panoArgs.push("--purge");
@@ -163,11 +175,11 @@ export function handleUninstall(opts: {
     }
   }
 
-  // 5. Remove fml data, logs, and plugin cache
+  // 6. Remove fml data, logs, and plugin cache
   if (targetSpecific) {
-    console.log("[5/5] Skipping data removal (target-specific uninstall)");
+    console.log("[6/6] Skipping data removal (target-specific uninstall)");
   } else {
-    console.log("[5/5] Removing plugin cache...");
+    console.log("[6/6] Removing plugin cache...");
     try {
       fs.rmSync(PLUGIN_CACHE_DIR, { recursive: true, force: true });
       console.log(`      Removed ${PLUGIN_CACHE_DIR}`);

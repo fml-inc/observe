@@ -38,11 +38,11 @@ Installs the CLI binary. After this command, the `fml` binary is on `$PATH`. If 
 
 ### `fml install`
 
-Registers the plugin, skills, and hooks into whichever coding-agent CLIs are present (Claude Code, Codex, Gemini, Claude Desktop) and starts the local panopticon daemon on `127.0.0.1:4318`.
+Registers the plugin, FML agent skill, and hooks into supported coding-agent CLIs and starts the local panopticon daemon on `127.0.0.1:4318`. The FML skill is installed at user scope where standard skill locations are available, including Claude Code (`~/.claude/skills/fml`), Codex (`~/.codex/skills/fml`), and Pi (`~/.pi/agent/skills/fml`). Custom agent roots are honored via `FML_CLAUDE_DIR` / `CLAUDE_CONFIG_DIR` / `PANOPTICON_CLAUDE_DIR`, `FML_CODEX_DIR` / `PANOPTICON_CODEX_DIR` / `CODEX_HOME`, and `FML_PI_DIR` / `PANOPTICON_PI_DIR` / `PI_HOME`.
 
 Expected behavior in a sandbox:
 
-- Step 5 ("Configuring sync target") prints `Auth: not configured — run fml login to enable sync.` **This is normal and expected when `gh` is not installed.** Do not try to install `gh` or run `fml sync setup`; the next step will configure sync for you.
+- Step 6 ("Configuring sync target") prints `Auth: not configured — run fml login to enable sync.` **This is normal and expected when `gh` is not installed.** Do not try to install `gh` or run `fml sync setup`; the next step will configure sync for you.
 - The banner prints `Done! Start a new coding session to activate.`
 
 Do not restart your own session — you cannot. Subsequent steps work regardless.
@@ -109,7 +109,7 @@ The sandbox doesn't allow global installs as your user. Try `npm install -g @fml
 
 ## What's available after a successful install
 
-Once `fml doctor` is green, your coding-agent session has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
+Once `fml doctor` is green, supported agents also have an `fml` skill that explains the CLI catalog workflow and safe auth/setup checks. Claude Code additionally has a set of MCP tools in the `fml` namespace: `get_engineering_activity`, `list_engineering_sessions`, `search_engineering_sessions`, `get_session_timeline`, `get_ai_spending`, `whoami`, `fml_list_integrations`, and others. Call them the same way you'd call any other MCP tool. See `README.md` for the full list.
 
 If you need a backend tool that is not exposed as a dedicated MCP tool, use the dynamic CLI catalog: `fml tools list --json`, `fml tools describe <tool-name> --json`, then `fml tools call <tool-name> --args '{"key":"value"}'`.
 

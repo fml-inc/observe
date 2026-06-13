@@ -8,7 +8,7 @@ Agent tools for AI coding assistants. Installs as a [Claude Code plugin](https:/
 npm install -g @fml-inc/fml
 ```
 
-This installs the plugin, registers hooks and MCP tools in Claude Code, and bootstraps Panopticon for local data collection. Start a new session to activate.
+This installs the plugin, registers hooks and MCP tools in Claude Code, installs the FML agent skill for supported CLIs (Claude Code, Codex, Pi), and bootstraps Panopticon for local data collection. Start a new session to activate.
 
 Then sign in:
 
@@ -66,8 +66,8 @@ fml tools call <tool-name> --args '{"key":"value"}'
 ## CLI
 
 ```
-fml install              Register plugin, hooks, and daemons
-fml uninstall            Remove plugin and hooks
+fml install              Register plugin, skills, hooks, and daemons
+fml uninstall            Remove plugin, skills, and hooks
   --target <t>           Target: claude, gemini, codex, claude-desktop, all
   --purge                Also remove all data, logs, and auth tokens
 fml update               Update to the latest version
