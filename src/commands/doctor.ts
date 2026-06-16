@@ -7,6 +7,7 @@ import {
 } from "../auth/token-store.js";
 import { createFmlClient } from "../fml-client.js";
 import { CONVEX_URL } from "../config.js";
+import { checkCodexMcp } from "../codex-config.js";
 import { panopticonExec } from "../daemon-utils.js";
 import { parsePanopticonRunning } from "./daemon.js";
 import { loadSyncConfig } from "@fml-inc/panopticon/sync";
@@ -128,7 +129,21 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     }
   }
 
-  // 3. Sync status (only if authenticated)
+  // 3. FML MCP checks
+  {
+    const spinner = startSpinner("FML MCP for Codex");
+    const result = checkCodexMcp();
+    pushAndReport(
+      {
+        label: "FML MCP → Codex",
+        status: result.status,
+        detail: result.detail,
+      },
+      spinner,
+    );
+  }
+
+  // 4. Sync status (only if authenticated)
   if (token) {
     const spinner = startSpinner("sync");
     try {
@@ -202,7 +217,7 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     }
   }
 
-  // 4. Daemon checks
+  // 5. Daemon checks
   {
     const spinner = startSpinner("panopticon daemon");
     const isRunning = parsePanopticonRunning();
@@ -227,7 +242,7 @@ export async function handleDoctor(opts: { json?: boolean }): Promise<void> {
     }
   }
 
-  // 5. API reachability
+  // 6. API reachability
   {
     const spinner = startSpinner("API");
     if (token) {

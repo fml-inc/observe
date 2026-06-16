@@ -30,7 +30,7 @@ The guide covers: `npm install -g @fml-inc/fml` → `fml install` → `fml login
 
 **Local observability** — Panopticon captures OpenTelemetry signals, hook events, session files, and API traffic from Claude Code, Gemini CLI, and Codex CLI into a local SQLite database.
 
-**MCP tools for your agent** — Once installed, Claude Code gets tools to query your sessions, costs, activity, and connected integrations directly in conversation.
+**MCP tools for your agent** — Once installed, Claude Code and Codex get tools to query your sessions, costs, activity, and connected integrations directly in conversation.
 
 **Cloud sync** — Optionally sync local data to the FML dashboard for team-wide visibility, config snapshots, and automations.
 
